@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillBridge Connect - Connect with Skilled Workers</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand" id="nav-brand">
+                <i class="fas fa-hammer nav-icon"></i>
+                <span class="brand-text">SkillBridge Connect</span>
+            </div>
+            <div class="nav-menu">
+                <a href="#home" class="nav-link active" id="home-link">Home</a>
+                <a href="#about" class="nav-link">About</a>
+                <a href="#services" class="nav-link">Services</a>
+                <button class="btn btn--primary nav-btn" id="login-btn">Login</button>
+            </div>
+            <div class="nav-toggle" id="nav-toggle">
+                <i class="fas fa-bars"></i>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Homepage Section -->
+    <section id="home" class="section active">
+        <div class="hero">
+            <div class="container">
+                <div class="hero-content">
+                    <h1 class="hero-title">Connect with Skilled Workers in Your Area</h1>
+                    <p class="hero-subtitle">Find trusted carpenters, plumbers, electricians, and more. Get quality work done by verified professionals at fair prices.</p>
+                    <div class="hero-actions">
+                        <button class="btn btn--primary btn--lg" id="join-worker-btn">
+                            <i class="fas fa-user-plus"></i> Join as Worker
+                        </button>
+                        <button class="btn btn--secondary btn--lg" id="find-workers-btn">
+                            <i class="fas fa-search"></i> Find Workers
+                        </button>
+                    </div>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-item">
+                        <div class="stat-number">5000+</div>
+                        <div class="stat-label">Skilled Workers</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">50,000+</div>
+                        <div class="stat-label">Jobs Completed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">4.8★</div>
+                        <div class="stat-label">Average Rating</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <div class="container">
+                <h2 class="section-title">Why Choose SkillBridge Connect?</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-check"></i>
+                        </div>
+                        <h3>Verified Workers</h3>
+                        <p>All workers are background checked and verified for your safety and peace of mind.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <h3>Quality Assured</h3>
+                        <p>Real customer reviews and ratings help you choose the best workers for your needs.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3>Quick Booking</h3>
+                        <p>Find and book skilled workers in minutes. Get instant quotes and confirmations.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <h3>Fair Pricing</h3>
+                        <p>Transparent hourly rates with no hidden fees. Pay directly to workers.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Worker Registration Section -->
+    <section id="worker-registration" class="section">
+        <div class="container">
+            <div class="section-header">
+                <button class="back-btn" id="back-from-registration">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </button>
+                <h2 class="section-title">Join as a Skilled Worker</h2>
+                <p class="section-subtitle">Create your profile and start connecting with customers who need your skills</p>
+            </div>
+
+            <div class="form-container">
+                <form id="worker-form" class="worker-form">
+                    <div class="form-section">
+                        <h3 class="form-section-title">Personal Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Full Name *</label>
+                                <input type="text" class="form-control" id="worker-name" name="name" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Phone Number *</label>
+                                <input type="tel" class="form-control" id="worker-phone" name="phone" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email Address *</label>
+                            <input type="email" class="form-control" id="worker-email" name="email" required>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3 class="form-section-title">Professional Details</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Occupation *</label>
+                                <select class="form-control" id="worker-occupation" name="occupation" required>
+                                    <option value="">Select your occupation</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Years of Experience *</label>
+                                <select class="form-control" id="worker-experience" name="experience" required>
+                                    <option value="">Select experience</option>
+                                    <option value="1">1-2 years</option>
+                                    <option value="3">3-5 years</option>
+                                    <option value="6">6-10 years</option>
+                                    <option value="11">10+ years</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Specialties</label>
+                            <div id="specialties-container" class="specialties-container">
+                                <!-- Specialties checkboxes will be populated here -->
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Hourly Rate (₹) *</label>
+                                <input type="number" class="form-control" id="worker-rate" name="hourly_rate" min="50" max="2000" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Available Hours</label>
+                                <select class="form-control" id="worker-hours" name="available_hours">
+                                    <option value="flexible">Flexible</option>
+                                    <option value="morning">Morning (6 AM - 12 PM)</option>
+                                    <option value="afternoon">Afternoon (12 PM - 6 PM)</option>
+                                    <option value="evening">Evening (6 PM - 10 PM)</option>
+                                    <option value="full-time">Full Time</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3 class="form-section-title">Location Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Current Location *</label>
+                                <input type="text" class="form-control" id="worker-location" name="location" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Travel Radius (km)</label>
+                                <select class="form-control" id="worker-radius" name="travel_radius">
+                                    <option value="5">Within 5 km</option>
+                                    <option value="10">Within 10 km</option>
+                                    <option value="20">Within 20 km</option>
+                                    <option value="50">Within 50 km</option>
+                                    <option value="anywhere">Anywhere in city</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Preferred Work Areas</label>
+                            <div id="work-areas-container" class="work-areas-container">
+                                <!-- Work areas checkboxes will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3 class="form-section-title">Additional Information</h3>
+                        <div class="form-group">
+                            <label class="form-label">Service Description</label>
+                            <textarea class="form-control" id="worker-description" name="description" rows="4" 
+                                placeholder="Describe your services, experience, and what makes you stand out..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Certifications (if any)</label>
+                            <textarea class="form-control" id="worker-certifications" name="certifications" rows="2" 
+                                placeholder="List any certifications, training, or qualifications..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--primary btn--lg btn--full-width">
+                            <i class="fas fa-check"></i> Create Worker Profile
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Customer Search Section -->
+    <section id="customer-search" class="section">
+        <div class="container">
+            <div class="section-header">
+                <button class="back-btn" id="back-from-search">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </button>
+                <h2 class="section-title">Find Skilled Workers</h2>
+                <p class="section-subtitle">Search for verified professionals in your area</p>
+            </div>
+
+            <div class="search-container">
+                <div class="search-filters">
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <label class="filter-label">Service Needed</label>
+                            <select class="form-control" id="search-occupation">
+                                <option value="">All Services</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Location</label>
+                            <select class="form-control" id="search-location">
+                                <option value="">All Areas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Budget Range</label>
+                            <select class="form-control" id="search-budget">
+                                <option value="">Any Budget</option>
+                                <option value="0-200">₹0 - ₹200/hour</option>
+                                <option value="200-300">₹200 - ₹300/hour</option>
+                                <option value="300-500">₹300 - ₹500/hour</option>
+                                <option value="500+">₹500+/hour</option>
+                            </select>
+                        </div>
+                        <button class="btn btn--primary search-btn" id="search-workers-btn">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+
+                <div class="search-results">
+                    <div class="results-header">
+                        <h3 id="results-count">Showing all workers</h3>
+                        <div class="sort-options">
+                            <label>Sort by:</label>
+                            <select class="form-control sort-select" id="sort-by">
+                                <option value="rating">Highest Rated</option>
+                                <option value="price-low">Price: Low to High</option>
+                                <option value="price-high">Price: High to Low</option>
+                                <option value="experience">Most Experienced</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="workers-grid" class="workers-grid">
+                        <!-- Worker cards will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Worker Profile Section -->
+    <section id="worker-profile" class="section">
+        <div class="container">
+            <div class="section-header">
+                <button class="back-btn" id="back-from-profile">
+                    <i class="fas fa-arrow-left"></i> Back to Search
+                </button>
+            </div>
+
+            <div id="profile-content" class="profile-content">
+                <!-- Profile content will be populated here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Chat Section -->
+    <section id="chat" class="section">
+        <div class="container">
+            <div class="section-header">
+                <button class="back-btn" id="back-from-chat">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <h2 class="section-title">Chat</h2>
+            </div>
+
+            <div class="chat-container">
+                <div class="chat-sidebar">
+                    <h3>Conversations</h3>
+                    <div id="chat-list" class="chat-list">
+                        <!-- Chat list will be populated here -->
+                    </div>
+                </div>
+
+                <div class="chat-main">
+                    <div id="chat-header" class="chat-header">
+                        <div class="chat-user-info">
+                            <img src="https://via.placeholder.com/40x40?text=U" alt="User" class="chat-avatar">
+                            <div class="chat-user-details">
+                                <h4 id="chat-user-name">Select a conversation</h4>
+                                <span id="chat-user-status">Online</span>
+                            </div>
+                        </div>
+                        <div class="chat-actions">
+                            <button class="btn btn--outline btn--sm" id="share-contact-btn">
+                                <i class="fas fa-phone"></i> Share Contact
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="chat-placeholder">
+                            <i class="fas fa-comments"></i>
+                            <p>Select a conversation to start chatting</p>
+                        </div>
+                    </div>
+
+                    <div id="chat-input-container" class="chat-input-container" style="display: none;">
+                        <div class="chat-input-group">
+                            <input type="text" id="chat-input" class="chat-input" placeholder="Type your message...">
+                            <button class="btn btn--primary chat-send-btn" id="chat-send-btn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Login to SkillBridge Connect</h3>
+                <button class="modal-close" id="login-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="login-form">
+                    <div class="form-group">
+                        <label class="form-label">Email or Phone</label>
+                        <input type="text" class="form-control" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full-width">Login</button>
+                    <p class="modal-footer-text">
+                        Don't have an account? 
+                        <a href="#" id="switch-to-register">Sign up here</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signup Modal -->
+    <div id="signup-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Your Account</h3>
+                <button class="modal-close" id="signup-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="signup-form">
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-control" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password *</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password *</label>
+                        <input type="password" class="form-control" name="confirm_password" required>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full-width">Sign Up</button>
+                    <p class="modal-footer-text">
+                        Already have an account? 
+                        <a href="#" id="switch-to-login">Login here</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="success-title">Success!</h3>
+                <button class="modal-close" id="success-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <p id="success-message">Your profile has been created successfully!</p>
+                <button class="btn btn--primary" id="success-continue">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Chat Assistant -->
+    <div id="ai-chat" class="ai-chat">
+        <div class="ai-chat-header" id="ai-chat-header">
+            <i class="fas fa-robot"></i>
+            <span>AI Assistant</span>
+            <i class="fas fa-chevron-up ai-chat-toggle"></i>
+        </div>
+        <div class="ai-chat-body">
+            <div class="ai-chat-messages" id="ai-chat-messages">
+                <div class="ai-message">
+                    <div class="ai-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="ai-message-content">
+                        Hi! I'm your AI assistant. I can help you find the right workers or answer questions about our platform.
+                    </div>
+                </div>
+            </div>
+            <div class="ai-chat-input">
+                <input type="text" id="ai-input" placeholder="Ask me anything...">
+                <button id="ai-send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
