@@ -1,6 +1,13 @@
-// SkillBridge Connect - Complete Client-Side JavaScript with Auth & Database
+// ========================================
+// SKILLBRIDGE CONNECT - COMPLETE APP.JS
+// Production Ready with SQL Integration
+// ========================================
 
 const API_BASE_URL = 'http://localhost:3000/api';
+
+// ========================================
+// APP DATA & CONFIGURATION
+// ========================================
 
 const appData = {
   occupationsList: [
@@ -28,13 +35,22 @@ const appData = {
   }
 };
 
+// ========================================
+// STATE VARIABLES
+// ========================================
+
 let currentSection = 'home';
 let filteredWorkers = [];
+let allWorkersData = [];  // SQL workers from database
 let currentWorker = null;
 let authToken = localStorage.getItem('authToken');
 
+// ========================================
+// INITIALIZATION
+// ========================================
+
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('Initializing SkillBridge Connect...');
+  console.log('🚀 Initializing SkillBridge Connect...');
   initializeApp();
 });
 
@@ -43,19 +59,21 @@ function initializeApp() {
     checkAuthStatus();
     populateFormDropdowns();
     populateSearchDropdowns();
-    loadAllWorkers();
+    fetchWorkersFromSQL();  // Load from database
     setupEventHandlers();
-    console.log('✓ App initialized');
+    console.log('✅ App initialized successfully');
   } catch (error) {
-    console.error('Init error:', error);
+    console.error('❌ Init error:', error);
   }
 }
 
-// ============= AUTHENTICATION =============
+// ========================================
+// AUTHENTICATION
+// ========================================
 
 function checkAuthStatus() {
   if (authToken) {
-    console.log('✓ User logged in');
+    console.log('✅ User logged in');
     updateUIForLoggedInUser();
   }
 }
@@ -82,404 +100,759 @@ function handleLogout() {
 
 async function handleLogin(e) {
   e.preventDefault();
+  console.log('🔐 Starting login...');
+  
   const form = e.target;
-  const email = form.querySelector('input[name="email"]').value;
-  const password = form.querySelector('input[name="password"]').value;
+  const email = form.querySelector('input[name="email"]')?.value?.trim();
+  const password = form.querySelector('input[name="password"]')?.value;
+  
+  console.log('📧 Email:', email);
+  console.log('🔑 Password received:', password ? '✓' : '✗');
   
   if (!email || !password) {
-    alert('Please enter both email and password');
+    alert('❌ Please enter both email and password');
     return;
   }
   
   try {
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    console.log('🚀 Sending login request to:', `${API_BASE_URL}/auth/login`);
+    
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      headers: { 
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        email, 
+        password
+      })
     });
     
+    console.log('📊 Response status:', response.status);
+    
     const data = await response.json();
+    console.log('📥 Login response:', data);
     
     if (data.success) {
-      authToken = data.token;
+      // Store auth token
+      authToken = data.token || data.data?.token;
       localStorage.setItem('authToken', authToken);
-      localStorage.setItem('userId', data.userId);
+      localStorage.setItem('userId', data.userId || data.data?.userId);
+      localStorage.setItem('userEmail', email);
       
-      alert('Login successful!');
+      console.log('✅ Login successful! Token:', authToken);
+      alert('✅ Login successful!');
+      
+      // Close modal
       closeModal('login-modal');
+      
+      // Update UI
       updateUIForLoggedInUser();
       
+      // Clear form
+      form.reset();
+      
+      // Redirect if needed
       if (localStorage.getItem('pendingAction') === 'worker-registration') {
         localStorage.removeItem('pendingAction');
         showSection('worker-registration');
       }
     } else {
-      alert(data.error || 'Login failed');
+      console.error('❌ Login failed:', data.message);
+      alert('❌ ' + (data.message || 'Login failed. Check email and password.'));
     }
   } catch (error) {
-    console.error('Login error:', error);
-    alert('Login error. Please try again.');
+    console.error('❌ Login error:', error);
+    alert('❌ Error: ' + error.message);
   }
 }
 
+
 async function handleSignup(e) {
   e.preventDefault();
+  console.log('📝 Starting signup...');
+  
   const form = e.target;
-  const email = form.querySelector('input[name="email"]').value;
-  const phone = form.querySelector('input[name="phone"]').value;
-  const password = form.querySelector('input[name="password"]').value;
-  const confirmPassword = form.querySelector('input[name="confirm_password"]').value;
+  const email = form.querySelector('input[name="email"]')?.value?.trim();
+  const phone = form.querySelector('input[name="phone"]')?.value?.trim();
+  const password = form.querySelector('input[name="password"]')?.value;
+  const confirmPassword = form.querySelector('input[name="confirm_password"]')?.value;
+  
+  console.log('📧 Email:', email);
+  console.log('📱 Phone:', phone);
+  console.log('🔑 Password:', password ? '✓' : '✗');
+  console.log('🔑 Confirm Password:', confirmPassword ? '✓' : '✗');
   
   if (!email || !phone || !password || !confirmPassword) {
-    alert('Please fill in all fields');
+    alert('❌ Please fill in all fields');
+    return;
+  }
+  
+  if (!email.includes('@')) {
+    alert('❌ Please enter a valid email');
     return;
   }
   
   if (password !== confirmPassword) {
-    alert('Passwords do not match');
+    alert('❌ Passwords do not match');
     return;
   }
   
   if (password.length < 6) {
-    alert('Password must be at least 6 characters');
+    alert('❌ Password must be at least 6 characters');
     return;
   }
   
   try {
-    const response = await fetch(`${API_BASE_URL}/signup`, {
+    console.log('🚀 Sending signup request to:', `${API_BASE_URL}/auth/register`);
+    
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, phone, password })
+      headers: { 
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ 
+        email, 
+        phone, 
+        password,
+        userType: 'customer'
+      })
     });
     
+    console.log('📊 Response status:', response.status);
+    
     const data = await response.json();
+    console.log('📥 Signup response:', data);
     
     if (data.success) {
-      authToken = data.token;
+      // Store auth token
+      authToken = data.token || data.data?.token;
       localStorage.setItem('authToken', authToken);
-      localStorage.setItem('userId', data.userId);
+      localStorage.setItem('userId', data.userId || data.data?.userId);
+      localStorage.setItem('userEmail', email);
       
-      alert('Account created successfully!');
+      console.log('✅ Signup successful! New user created.');
+      alert('✅ Account created successfully!');
+      
+      // Close modal
       closeModal('signup-modal');
+      
+      // Update UI
       updateUIForLoggedInUser();
       
+      // Clear form
+      form.reset();
+      
+      // Redirect to worker registration if needed
       if (localStorage.getItem('pendingAction') === 'worker-registration') {
         localStorage.removeItem('pendingAction');
         showSection('worker-registration');
       }
     } else {
-      alert(data.error || 'Signup failed');
+      console.error('❌ Signup failed:', data.message);
+      alert('❌ ' + (data.message || 'Signup failed.'));
     }
   } catch (error) {
-    console.error('Signup error:', error);
-    alert('Signup error. Please try again.');
+    console.error('❌ Signup error:', error);
+    alert('❌ Error: ' + error.message);
   }
 }
 
-// ============= WORKER REGISTRATION =============
+
+// ========================================
+// WORKER REGISTRATION
+// ========================================
 
 async function handleWorkerRegistration(e) {
-  e.preventDefault();
-  console.log('Submitting worker registration...');
+e.preventDefault();
+console.log('📝 Submitting worker registration...');
+
+// Get auth token from localStorage
+const authToken = localStorage.getItem('authToken');
+
+if (!authToken) {
+alert('❌ You must login first to register as a worker');
+return;
+}
+
+try {
+// Collect specialties
+const specialtyCheckboxes = document.querySelectorAll('#specialties-container input[type="checkbox"]:checked');
+const specialties = Array.from(specialtyCheckboxes).map(cb => cb.value);
+
+
+// Collect work areas
+const areaCheckboxes = document.querySelectorAll('#work-areas-container input[type="checkbox"]:checked');
+const service_areas = Array.from(areaCheckboxes).map(cb => cb.value);
+
+// Collect form data
+const formData = {
+  name: document.getElementById('worker-name').value,
+  phone: document.getElementById('worker-phone').value,
+  email: document.getElementById('worker-email').value,
+  occupation: document.getElementById('worker-occupation').value,
+  experience: parseInt(document.getElementById('worker-experience').value),
+  specialties: specialties,
+  hourly_rate: parseInt(document.getElementById('worker-rate').value),
+  available_hours: document.getElementById('worker-hours').value,
+  location: document.getElementById('worker-location').value,
+  travel_radius: document.getElementById('worker-radius').value,
+  service_areas: service_areas,
+  description: document.getElementById('worker-description').value,
+  certifications: document.getElementById('worker-certifications').value
+};
+
+console.log('📋 Form data:', formData);
+
+// Validate
+if (!formData.name || !formData.phone || !formData.email || !formData.occupation || !formData.hourly_rate || !formData.location) {
+  alert('❌ Please fill in all required fields');
+  return;
+}
+
+// Send to server
+console.log('🚀 Sending to server...');
+console.log('📡 Token:', authToken.substring(0, 20) + '...');
+
+const response = await fetch('http://localhost:3000/api/workers', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${authToken}`
+  },
+  body: JSON.stringify(formData)
+});
+
+console.log('📊 Response status:', response.status);
+const data = await response.json();
+console.log('📥 Response:', data);
+
+if (data.success) {
+  // Show success
+  document.getElementById('success-title').textContent = 'Registration Successful!';
+  document.getElementById('success-message').textContent = 'Your worker profile has been created successfully!';
+  showModal('success-modal');
+
+  // Reset form
+  document.getElementById('worker-form').reset();
+  document.getElementById('specialties-container').innerHTML = '';
+
+  console.log('✅ Worker registered successfully');
+} else {
+  alert('❌ ' + (data.message || 'Registration failed'));
+  console.error('❌ Server error:', data);
+}
+} catch (error) {
+console.error('❌ Registration error:', error);
+alert('❌ Error: ' + error.message);
+}
+}
+
+
+// ========================================
+// SQL INTEGRATION - FETCH WORKERS
+// ========================================
+
+async function fetchWorkersFromSQL() {
+  try {
+    console.log('🔄 Fetching workers from SQL...');
+    console.log('📡 API URL:', `${API_BASE_URL}/workers`);
+    
+    const response = await fetch(`${API_BASE_URL}/workers`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('📊 Response status:', response.status);
+
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('📥 Raw response:', data);
+    console.log('📥 Response type:', typeof data);
+    console.log('📥 Is array?', Array.isArray(data));
+    
+    // IMPORTANT: Handle different response formats
+    let workersArray = [];
+    
+    if (Array.isArray(data)) {
+      // If response is directly an array
+      workersArray = data;
+      console.log('✅ Response is array');
+    } else if (data.success && Array.isArray(data.data)) {
+      // If response is {success: true, data: [...]}
+      workersArray = data.data;
+      console.log('✅ Response has data array');
+    } else if (data.success && Array.isArray(data.workers)) {
+      // If response is {success: true, workers: [...]}
+      workersArray = data.workers;
+      console.log('✅ Response has workers array');
+    } else if (!data.success) {
+      // If API returned error
+      throw new Error(data.message || 'API returned success: false');
+    } else {
+      // Unknown format
+      console.error('❌ Unknown response format:', data);
+      throw new Error('Unknown API response format');
+    }
+    
+    // Now assign to global variables
+    allWorkersData = workersArray;
+    filteredWorkers = [...allWorkersData];  // Now this works!
+    
+    console.log(`✅ Loaded ${allWorkersData.length} workers`);
+    
+    // Display workers
+    displayAllWorkers();
+    updateResultsCount();
+    
+    return true;
+    
+  } catch (error) {
+    console.error('❌ Error fetching workers:', error);
+    console.error('Stack:', error.stack);
+    
+    // Reset to empty arrays
+    allWorkersData = [];
+    filteredWorkers = [];
+    
+    displayAllWorkers();
+    alert('❌ Error loading workers: ' + error.message);
+    return false;
+  }
+}
+
+
+// ========================================
+// DISPLAY FUNCTIONS
+// ========================================
+function displayAllWorkers() {
+  console.log('📋 Displaying workers...');
+  console.log('Workers count:', allWorkersData ? allWorkersData.length : 0);
+  console.log('Workers array:', allWorkersData);
   
-  if (!isLoggedIn()) {
-    alert('Please login first to register as a worker');
-    localStorage.setItem('pendingAction', 'worker-registration');
-    showModal('login-modal');
+  const workersGrid = document.getElementById('workers-grid');
+  
+  if (!workersGrid) {
+    console.error('❌ ERROR: workers-grid container NOT found!');
+    alert('❌ Error: workers-grid element not found in HTML!');
     return;
   }
   
-  try {
-    const specialtyCheckboxes = document.querySelectorAll('#specialties-container input[type="checkbox"]:checked');
-    const specialties = Array.from(specialtyCheckboxes).map(cb => cb.value);
-    
-    const areaCheckboxes = document.querySelectorAll('#work-areas-container input[type="checkbox"]:checked');
-    const workAreas = Array.from(areaCheckboxes).map(cb => cb.value);
-    
-    const formData = {
-      name: document.getElementById('worker-name').value,
-      phone: document.getElementById('worker-phone').value,
-      email: document.getElementById('worker-email').value,
-      occupation: document.getElementById('worker-occupation').value,
-      experience: document.getElementById('worker-experience').value,
-      specialties: specialties,
-      hourly_rate: parseInt(document.getElementById('worker-rate').value),
-      available_hours: document.getElementById('worker-hours').value,
-      location: document.getElementById('worker-location').value,
-      travel_radius: document.getElementById('worker-radius').value,
-      work_areas: workAreas,
-      description: document.getElementById('worker-description').value,
-      certifications: document.getElementById('worker-certifications').value
-    };
-    
-    if (!formData.name || !formData.phone || !formData.email || !formData.occupation || 
-        !formData.experience || !formData.hourly_rate || !formData.location) {
-      alert('Please fill in all required fields marked with *');
-      return;
-    }
-    
-    const response = await fetch(`${API_BASE_URL}/worker/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
-      },
-      body: JSON.stringify(formData)
-    });
-    
-    const data = await response.json();
-    
-    if (data.success) {
-      document.getElementById('success-title').textContent = 'Registration Successful!';
-      document.getElementById('success-message').textContent = 
-        'Your worker profile has been created successfully and saved to database!';
-      showModal('success-modal');
-      
-      document.getElementById('worker-form').reset();
-      document.getElementById('specialties-container').innerHTML = '';
-      
-      console.log('✓ Worker registered:', data);
-    } else {
-      alert(data.error || 'Registration failed');
-    }
-    
-  } catch (error) {
-    console.error('Registration error:', error);
-    alert('Registration error. Please try again.');
-  }
-}
-
-// ============= LOAD & SEARCH WORKERS =============
-
-async function loadAllWorkers() {
-  console.log('Loading workers from database...');
+  console.log('✅ Found workers-grid container');
   
-  try {
-    const response = await fetch(`${API_BASE_URL}/workers`);
-    const data = await response.json();
-    
-    if (data.success) {
-      filteredWorkers = data.workers;
-      displayWorkers();
-      updateResultsCount();
-      console.log(`✓ Loaded ${filteredWorkers.length} workers`);
-    } else {
-      filteredWorkers = [];
-      displayWorkers();
-    }
-  } catch (error) {
-    console.error('Load error:', error);
-    filteredWorkers = [];
-    displayWorkers();
+  // Make sure allWorkersData is an array
+  if (!Array.isArray(allWorkersData)) {
+    console.error('❌ allWorkersData is not an array:', allWorkersData);
+    allWorkersData = [];
   }
-}
-
-async function searchWorkers() {
-  try {
-    const occupation = document.getElementById('search-occupation')?.value || '';
-    const location = document.getElementById('search-location')?.value || '';
-    const budget = document.getElementById('search-budget')?.value || '';
-    
-    const params = new URLSearchParams();
-    if (occupation) params.append('occupation', occupation);
-    if (location) params.append('location', location);
-    
-    if (budget) {
-      if (budget === '500+') {
-        params.append('min_rate', '500');
-      } else {
-        const [min, max] = budget.split('-');
-        if (min) params.append('min_rate', min);
-        if (max) params.append('max_rate', max);
-      }
-    }
-    
-    const sortBy = document.getElementById('sort-by')?.value || '';
-    if (sortBy) params.append('sort', sortBy);
-    
-    const response = await fetch(`${API_BASE_URL}/workers?${params.toString()}`);
-    const data = await response.json();
-    
-    if (data.success) {
-      filteredWorkers = data.workers;
-      displayWorkers();
-      updateResultsCount();
-    }
-  } catch (error) {
-    console.error('Search error:', error);
-  }
-}
-
-function sortWorkers() {
-  searchWorkers();
-}
-
-// ============= DISPLAY FUNCTIONS =============
-
-function displayWorkers() {
-  const workersGrid = document.getElementById('workers-grid');
-  if (!workersGrid) return;
   
-  if (filteredWorkers.length === 0) {
+  if (allWorkersData.length === 0) {
+    console.warn('⚠️ No workers to display');
     workersGrid.innerHTML = `
-      <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
-        <i class="fas fa-search" style="font-size: 48px; opacity: 0.5;"></i>
-        <h3>No workers found</h3>
-        <p>Try adjusting your search criteria</p>
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #999;">
+        <p style="font-size: 18px;">📭 No workers found</p>
+        <p>Make sure database has workers or check API connection</p>
+        <button onclick="fetchWorkersFromSQL()" style="padding: 10px 20px; background: #2196F3; color: white; border: none; cursor: pointer; border-radius: 4px;">
+          🔄 Reload Workers
+        </button>
       </div>
     `;
     return;
   }
   
-  workersGrid.innerHTML = filteredWorkers.map(worker => {
-    const specialties = parseJSON(worker.specialties);
+  try {
+    const htmlCards = allWorkersData.map(worker => {
+      if (!worker) {
+        console.warn('⚠️ Worker is null or undefined');
+        return '';
+      }
+      console.log('Creating card for:', worker.name);
+      return createWorkerCard(worker);
+    }).filter(card => card !== '').join('');
     
-    return `
-    <div class="worker-card">
+    workersGrid.innerHTML = htmlCards;
+    console.log(`✅ Displayed ${allWorkersData.length} workers`);
+    
+  } catch (error) {
+    console.error('❌ Error displaying workers:', error);
+    workersGrid.innerHTML = `<div style="grid-column: 1 / -1; color: red; padding: 20px;">❌ Error: ${error.message}</div>`;
+  }
+}
+
+
+function createWorkerCard(worker) {
+  // Parse specialties safely
+  let specialties = [];
+  try {
+    specialties = Array.isArray(worker.specialties) 
+      ? worker.specialties 
+      : JSON.parse(worker.specialties || '[]');
+  } catch (e) {
+    specialties = [];
+  }
+
+  // Parse service areas safely
+  let serviceAreas = [];
+  try {
+    serviceAreas = Array.isArray(worker.service_areas)
+      ? worker.service_areas
+      : JSON.parse(worker.service_areas || '[]');
+  } catch (e) {
+    serviceAreas = [];
+  }
+
+  const rating = parseFloat(worker.rating) || 0;
+  const reviews = parseInt(worker.total_reviews) || 0;
+
+  return `
+    <div class="worker-card" data-worker-id="${worker.id}">
       <div class="worker-header">
-        <img src="https://via.placeholder.com/150x150?text=${worker.name?.charAt(0) || 'W'}" 
-             alt="${worker.name}" class="worker-avatar">
-        <div class="worker-info">
-          <h3>${worker.name}</h3>
-          <div class="worker-occupation">${worker.occupation}</div>
-          <div class="worker-rating">
-            <span class="rating-stars">${generateStars(worker.rating || 0)}</span>
-            <span>${(worker.rating || 0).toFixed(1)} (${worker.reviews_count || 0} reviews)</span>
-            ${worker.verified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i> Verified</span>' : ''}
-          </div>
+        <div class="worker-avatar" style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 32px; color: white;">
+          ${worker.name.charAt(0).toUpperCase()}
+        </div>
+        <div class="worker-title" style="flex: 1; margin-left: 15px;">
+          <h3 style="margin: 0; font-size: 18px; color: #333;">${escapeHtml(worker.name)}</h3>
+          <p style="margin: 5px 0; color: #666; font-size: 14px;">${escapeHtml(worker.occupation)}</p>
+          ${worker.verified ? '<span style="color: #4CAF50; font-size: 12px; font-weight: bold;">✓ Verified</span>' : ''}
         </div>
       </div>
-      
-      <div class="worker-details">
-        <div class="detail-item">
-          <i class="fas fa-map-marker-alt"></i>
-          <span>${worker.location}</span>
-        </div>
-        <div class="detail-item">
-          <i class="fas fa-briefcase"></i>
-          <span>${worker.experience} years experience</span>
-        </div>
-        <div class="detail-item">
-          <i class="fas fa-money-bill-wave"></i>
-          <span>₹${worker.hourly_rate}/hour</span>
+
+      <div class="worker-rating" style="margin: 15px 0; padding: 12px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee;">
+        <span>${generateStars(rating)}</span>
+        <span style="margin-left: 10px; color: #666; font-size: 14px;"><strong>${rating.toFixed(1)}</strong>/5 <span style="color: #999;">(${reviews} reviews)</span></span>
+      </div>
+
+      <div class="worker-details" style="font-size: 13px; margin: 12px 0; line-height: 1.8; color: #555;">
+        <p style="margin: 6px 0;"><strong>📍 Location:</strong> ${escapeHtml(worker.location)}</p>
+        <p style="margin: 6px 0;"><strong>💼 Experience:</strong> ${worker.experience} years</p>
+        <p style="margin: 6px 0;"><strong>💰 Rate:</strong> <span style="color: #2196F3; font-weight: bold;">₹${worker.hourly_rate}/hr</span></p>
+        ${worker.description ? `<p style="margin: 6px 0;"><strong>About:</strong> ${escapeHtml(worker.description.substring(0, 100))}${worker.description.length > 100 ? '...' : ''}</p>` : ''}
+      </div>
+
+      <div class="worker-specialties" style="margin: 12px 0;">
+        <strong style="font-size: 12px; color: #666;">Specialties:</strong>
+        <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px;">
+          ${specialties.slice(0, 5).map(s => `<span style="background: #e8f5e9; padding: 4px 10px; border-radius: 4px; font-size: 11px; color: #2e7d32;">${escapeHtml(s)}</span>`).join('')}
+          ${specialties.length > 5 ? `<span style="background: #e8f5e9; padding: 4px 10px; border-radius: 4px; font-size: 11px; color: #2e7d32;">+${specialties.length - 5} more</span>` : ''}
         </div>
       </div>
-      
-      <div class="worker-specialties">
-        ${specialties.slice(0, 3).map(s => `<span class="specialty-tag">${s}</span>`).join('')}
-        ${specialties.length > 3 ? `<span class="specialty-tag">+${specialties.length - 3} more</span>` : ''}
+
+      <div class="worker-areas" style="margin: 12px 0; font-size: 12px; color: #666;">
+        <strong>Service Areas:</strong> <span style="color: #333;">${serviceAreas.slice(0, 2).join(', ')}${serviceAreas.length > 2 ? ` +${serviceAreas.length - 2} more` : ''}</span>
       </div>
-      
-      <div class="worker-actions">
-        <button class="btn btn--outline btn--sm" onclick="viewWorkerProfile(${worker.id})">
-          <i class="fas fa-eye"></i> View Profile
-        </button>
-        <button class="btn btn--primary btn--sm" onclick="contactWorker(${worker.id})">
-          <i class="fas fa-comment"></i> Contact
-        </button>
+
+      <div class="worker-actions" style="display: flex; gap: 8px; margin-top: 15px;">
+        <button style="flex: 1; padding: 10px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;" onclick="bookWorker(${worker.id})">📅 Book Now</button>
+        <button style="flex: 1; padding: 10px; background: #f0f0f0; color: #333; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px;" onclick="viewWorkerProfile(${worker.id})">👤 View</button>
       </div>
     </div>
-    `;
-  }).join('');
+  `;
 }
 
 async function viewWorkerProfile(workerId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/workers/${workerId}`);
-    const data = await response.json();
-    
-    if (data.success) {
-      currentWorker = data.worker;
-      displayWorkerProfile(data.worker);
+    const worker = allWorkersData.find(w => w.id === workerId);
+    if (worker) {
+      currentWorker = worker;
+      displayWorkerProfile(worker);
       showSection('worker-profile');
     }
   } catch (error) {
     console.error('Profile load error:', error);
   }
 }
-
 function displayWorkerProfile(worker) {
   const profileContent = document.getElementById('profile-content');
-  if (!profileContent) return;
+  if (!profileContent) {
+    console.error('❌ profile-content element not found');
+    return;
+  }
   
   const specialties = parseJSON(worker.specialties);
-  const workAreas = parseJSON(worker.work_areas);
+  const serviceAreas = parseJSON(worker.service_areas);
   
   profileContent.innerHTML = `
-    <div class="profile-header">
-      <div class="profile-basic-info">
-        <img src="https://via.placeholder.com/150x150?text=${worker.name?.charAt(0) || 'W'}" 
-             alt="${worker.name}" class="profile-avatar">
-        <div class="profile-details">
-          <h1>${worker.name}</h1>
-          <div class="profile-occupation">${worker.occupation}</div>
-          <div class="profile-rating">
-            <div class="rating-stars">${generateStars(worker.rating || 0)}</div>
-            <span>${(worker.rating || 0).toFixed(1)} stars (${worker.reviews_count || 0} reviews)</span>
-            ${worker.verified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i> Verified</span>' : ''}
+    <div style="padding: 20px; background: white;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
+        <div style="display: flex; gap: 20px; align-items: flex-start;">
+          <div style="width: 120px; height: 120px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: bold;">
+            ${worker.name.charAt(0).toUpperCase()}
           </div>
-          <div class="profile-contact-info">
-            <span class="detail-item"><i class="fas fa-map-marker-alt"></i> ${worker.location}</span>
-            <span class="detail-item"><i class="fas fa-money-bill-wave"></i> ₹${worker.hourly_rate}/hour</span>
-            <span class="detail-item"><i class="fas fa-briefcase"></i> ${worker.experience} years</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div class="profile-sections">
-      <div class="profile-main">
-        <div class="profile-section">
-          <h3><i class="fas fa-user"></i> About</h3>
-          <p>${worker.description || 'No description provided.'}</p>
-        </div>
-        
-        ${specialties.length > 0 ? `
-        <div class="profile-section">
-          <h3><i class="fas fa-tools"></i> Skills & Specialties</h3>
-          <div class="skills-grid">
-            ${specialties.map(s => `<div class="skill-item"><div class="skill-name">${s}</div></div>`).join('')}
+          <div style="flex: 1;">
+            <h1 style="margin: 0; font-size: 28px;">${escapeHtml(worker.name)}</h1>
+            <p style="margin: 8px 0; font-size: 18px; opacity: 0.9;">${escapeHtml(worker.occupation)}</p>
+            <div style="display: flex; gap: 15px; margin-top: 12px; font-size: 14px;">
+              <span>⭐ ${worker.rating || 0}/5</span>
+              <span>💼 ${worker.experience} years</span>
+              <span>💰 ₹${worker.hourly_rate}/hr</span>
+              ${worker.verified ? '<span style="background: rgba(255,255,255,0.3); padding: 4px 10px; border-radius: 4px;">✓ Verified</span>' : ''}
+            </div>
           </div>
         </div>
-        ` : ''}
-        
-        ${workAreas.length > 0 ? `
-        <div class="profile-section">
-          <h3><i class="fas fa-map"></i> Service Areas</h3>
-          <div class="skills-grid">
-            ${workAreas.map(a => `<div class="skill-item"><div class="skill-name">${a}</div></div>`).join('')}
-          </div>
-        </div>
-        ` : ''}
-        
-        ${worker.certifications ? `
-        <div class="profile-section">
-          <h3><i class="fas fa-certificate"></i> Certifications</h3>
-          <p>${worker.certifications}</p>
-        </div>
-        ` : ''}
       </div>
       
-      <div class="profile-sidebar">
-        <div class="profile-section">
-          <h3><i class="fas fa-phone"></i> Contact</h3>
-          <button class="btn btn--primary btn--full-width" onclick="contactWorker(${worker.id})">
-            <i class="fas fa-phone"></i> Contact Worker
-          </button>
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+        <div class="profile-main">
+          <div style="background: #999; padding: 20px;border:0.5px solid black; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="margin-top: 0; color: #333;">About</h3>
+            <p style="color: #666; line-height: 1.6;">${escapeHtml(worker.description || 'No description provided.')}</p>
+          </div>
+          
+          ${specialties.length > 0 ? `
+          <div style="background: #999; padding: 20px; border:0.5px solid black;  border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="margin-top: 0; color: #333;">Skills & Specialties</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+              ${specialties.map(s => `<div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #2196F3; color: #333;">${escapeHtml(s)}</div>`).join('')}
+            </div>
+          </div>
+          ` : ''}
+          
+          ${serviceAreas.length > 0 ? `
+          <div style="background: #999; padding: 20px; border:0.5px solid black;  border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="margin-top: 0; color: #333;">Service Areas</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+              ${serviceAreas.map(a => `<div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #4CAF50; color: #333;">📍 ${escapeHtml(a)}</div>`).join('')}
+            </div>
+          </div>
+          ` : ''}
+          
+          ${worker.certifications ? `
+          <div style="background: #999; padding: 20px; border:0.5px solid black;  border-radius: 8px;">
+            <h3 style="margin-top: 0; color: #333;">Certifications</h3>
+            <p style="color: #666;">${escapeHtml(worker.certifications)}</p>
+          </div>
+          ` : ''}
+        </div>
+        
+        <div class="profile-sidebar">
+          <div style="background: #2196F3; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+            <h3 style="margin-top: 0;">Contact Worker</h3>
+            <button style="width: 100%; padding: 12px; background: white; color: #2196F3; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 10px 0;" onclick="contactWorker(${worker.id})">
+              📞 Call Now
+            </button>
+            <p style="font-size: 12px; margin: 10px 0 0 0; opacity: 0.9;">Response time: Usually within 1 hour</p>
+          </div>
         </div>
       </div>
     </div>
   `;
+  console.log('✅ Profile displayed');
 }
 
+
 function contactWorker(workerId) {
-  const worker = filteredWorkers.find(w => w.id === workerId) || currentWorker;
+  const worker = allWorkersData.find(w => w.id === workerId) || currentWorker;
   if (worker) {
-    alert(`Contact Information:\n\nName: ${worker.name}\nPhone: ${worker.phone}\nEmail: ${worker.email}\n\nYou can now contact this worker directly!`);
+    alert(`Contact Information:\n\nName: ${worker.name}\nPhone: ${worker.phone}\nEmail: ${worker.email}\n\nPlease feel free to contact this worker directly!`);
   }
 }
 
-// ============= UTILITY FUNCTIONS =============
+// ========================================
+// FILTER FUNCTIONS
+// ========================================
+
+function filterWorkersByOccupation(occupation) {
+  console.log('🔍 Filtering by occupation:', occupation);
+  
+  if (!occupation || occupation === 'all') {
+    filteredWorkers = [...allWorkersData];
+    displayAllWorkers();
+    updateResultsCount();
+    return;
+  }
+
+  filteredWorkers = allWorkersData.filter(worker => 
+    worker.occupation.toLowerCase() === occupation.toLowerCase()
+  );
+
+  displayAllWorkers();
+  updateResultsCount();
+}
+
+function filterWorkersByLocation(location) {
+  console.log('🔍 Filtering by location:', location);
+  
+  if (!location) {
+    filteredWorkers = [...allWorkersData];
+    displayAllWorkers();
+    updateResultsCount();
+    return;
+  }
+
+  filteredWorkers = allWorkersData.filter(worker => {
+    const workerLocation = worker.location.toLowerCase();
+    let serviceAreas = [];
+    try {
+      serviceAreas = Array.isArray(worker.service_areas)
+        ? worker.service_areas.map(a => a.toLowerCase())
+        : JSON.parse(worker.service_areas || '[]').map(a => a.toLowerCase());
+    } catch (e) {}
+
+    return workerLocation.includes(location.toLowerCase()) || 
+           serviceAreas.some(area => area.includes(location.toLowerCase()));
+  });
+
+  displayAllWorkers();
+  updateResultsCount();
+}
+
+function filterWorkersByBudget(maxRate) {
+  console.log('🔍 Filtering by budget: Below ₹' + maxRate);
+  
+  filteredWorkers = allWorkersData.filter(worker => {
+    const rate = parseFloat(worker.hourly_rate);
+    return rate <= maxRate;
+  });
+
+  displayAllWorkers();
+  updateResultsCount();
+}
+
+function filterWorkersByRating(minRating) {
+  console.log('🔍 Filtering by minimum rating:', minRating);
+  
+  filteredWorkers = allWorkersData.filter(worker => {
+    const rating = parseFloat(worker.rating) || 0;
+    return rating >= minRating;
+  });
+
+  displayAllWorkers();
+  updateResultsCount();
+}
+
+function searchWorkers(searchTerm) {
+  console.log('🔍 Searching for:', searchTerm);
+  
+  if (!searchTerm || searchTerm.trim() === '') {
+    filteredWorkers = [...allWorkersData];
+    displayAllWorkers();
+    updateResultsCount();
+    return;
+  }
+
+  const term = searchTerm.toLowerCase().trim();
+  filteredWorkers = allWorkersData.filter(worker => {
+    const name = worker.name.toLowerCase();
+    const occupation = worker.occupation.toLowerCase();
+    const location = worker.location.toLowerCase();
+    const description = (worker.description || '').toLowerCase();
+    
+    let specialties = '';
+    try {
+      const specs = Array.isArray(worker.specialties)
+        ? worker.specialties
+        : JSON.parse(worker.specialties || '[]');
+      specialties = specs.map(s => s.toLowerCase()).join(' ');
+    } catch (e) {}
+
+    return name.includes(term) || 
+           occupation.includes(term) || 
+           location.includes(term) || 
+           description.includes(term) ||
+           specialties.includes(term);
+  });
+
+  displayAllWorkers();
+  updateResultsCount();
+}
+
+function applyMultipleFilters(filters) {
+  console.log('🔍 Applying multiple filters:', filters);
+  
+  filteredWorkers = allWorkersData;
+
+  // Filter by occupation
+  if (filters.occupation && filters.occupation !== 'all') {
+    filteredWorkers = filteredWorkers.filter(w => 
+      w.occupation.toLowerCase() === filters.occupation.toLowerCase()
+    );
+  }
+
+  // Filter by location
+  if (filters.location) {
+    filteredWorkers = filteredWorkers.filter(w => {
+      let serviceAreas = [];
+      try {
+        serviceAreas = Array.isArray(w.service_areas)
+          ? w.service_areas.map(a => a.toLowerCase())
+          : JSON.parse(w.service_areas || '[]').map(a => a.toLowerCase());
+      } catch (e) {}
+      
+      return w.location.toLowerCase().includes(filters.location.toLowerCase()) ||
+             serviceAreas.some(area => area.includes(filters.location.toLowerCase()));
+    });
+  }
+
+  // Filter by budget
+  if (filters.maxBudget) {
+    filteredWorkers = filteredWorkers.filter(w => {
+      const rate = parseFloat(w.hourly_rate);
+      return rate <= filters.maxBudget;
+    });
+  }
+
+  // Filter by rating
+  if (filters.minRating) {
+    filteredWorkers = filteredWorkers.filter(w => {
+      const rating = parseFloat(w.rating) || 0;
+      return rating >= filters.minRating;
+    });
+  }
+
+  // Search term
+  if (filters.searchTerm) {
+    const term = filters.searchTerm.toLowerCase();
+    filteredWorkers = filteredWorkers.filter(w => {
+      return w.name.toLowerCase().includes(term) ||
+             w.occupation.toLowerCase().includes(term) ||
+             w.location.toLowerCase().includes(term);
+    });
+  }
+
+  displayAllWorkers();
+  updateResultsCount();
+}
+
+// ========================================
+// SEARCH & SORT
+// ========================================
+
+async function handleSearch(e) {
+  e?.preventDefault?.();
+  searchWorkers();
+}
+
+function sortWorkers() {
+  const sortBy = document.getElementById('sort-by')?.value || '';
+  
+  if (!sortBy) return;
+  
+  switch(sortBy) {
+    case 'rating':
+      filteredWorkers.sort((a, b) => parseFloat(b.rating || 0) - parseFloat(a.rating || 0));
+      break;
+    case 'price-low':
+      filteredWorkers.sort((a, b) => parseFloat(a.hourly_rate) - parseFloat(b.hourly_rate));
+      break;
+    case 'price-high':
+      filteredWorkers.sort((a, b) => parseFloat(b.hourly_rate) - parseFloat(a.hourly_rate));
+      break;
+    case 'experience':
+      filteredWorkers.sort((a, b) => parseFloat(b.experience) - parseFloat(a.experience));
+      break;
+  }
+  
+  displayAllWorkers();
+}
+
+// ========================================
+// UTILITY FUNCTIONS
+// ========================================
 
 function parseJSON(jsonString) {
   try {
@@ -494,11 +867,22 @@ function generateStars(rating) {
   const hasHalfStar = rating % 1 >= 0.5;
   let stars = '';
   
-  for (let i = 0; i < fullStars; i++) stars += '<i class="fas fa-star"></i>';
-  if (hasHalfStar) stars += '<i class="fas fa-star-half-alt"></i>';
-  for (let i = 0; i < (5 - Math.ceil(rating)); i++) stars += '<i class="far fa-star"></i>';
+  for (let i = 0; i < fullStars; i++) stars += '⭐';
+  if (hasHalfStar) stars += '⭐';
   
-  return stars;
+  return stars || '✓';
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
 }
 
 function updateResultsCount() {
@@ -508,7 +892,9 @@ function updateResultsCount() {
   }
 }
 
-// ============= FORM POPULATION =============
+// ========================================
+// FORM POPULATION
+// ========================================
 
 function populateFormDropdowns() {
   const occupationSelect = document.getElementById('worker-occupation');
@@ -575,7 +961,9 @@ function updateSpecialties() {
   }
 }
 
-// ============= EVENT HANDLERS =============
+// ========================================
+// EVENT HANDLERS
+// ========================================
 
 function setupEventHandlers() {
   bindEvent('join-worker-btn', 'click', () => {
@@ -587,7 +975,11 @@ function setupEventHandlers() {
     }
   });
   
-  bindEvent('find-workers-btn', 'click', () => showSection('customer-search'));
+  bindEvent('find-workers-btn', 'click', () => {
+    fetchWorkersFromSQL();
+    showSection('customer-search');
+  });
+  
   bindEvent('login-btn', 'click', () => showModal('login-modal'));
   bindEvent('nav-brand', 'click', () => showSection('home'));
   bindEvent('home-link', 'click', (e) => { e.preventDefault(); showSection('home'); });
@@ -596,7 +988,7 @@ function setupEventHandlers() {
   bindEvent('back-from-search', 'click', () => showSection('home'));
   bindEvent('back-from-profile', 'click', () => showSection('customer-search'));
   
-  bindEvent('search-workers-btn', 'click', searchWorkers);
+  bindEvent('search-workers-btn', 'click', handleSearch);
   bindEvent('sort-by', 'change', sortWorkers);
   
   bindEvent('worker-form', 'submit', handleWorkerRegistration);
@@ -631,7 +1023,44 @@ function setupEventHandlers() {
     });
   });
   
-  console.log('✓ Event handlers setup complete');
+  // Search inputs
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.addEventListener('keyup', () => searchWorkers(searchInput.value));
+  }
+  
+  const occupationFilter = document.getElementById('search-occupation');
+  if (occupationFilter) {
+    occupationFilter.addEventListener('change', () => {
+      filterWorkersByOccupation(occupationFilter.value);
+    });
+  }
+  
+  const locationFilter = document.getElementById('search-location');
+  if (locationFilter) {
+    locationFilter.addEventListener('change', () => {
+      filterWorkersByLocation(locationFilter.value);
+    });
+  }
+  
+  const budgetFilter = document.getElementById('search-budget');
+  if (budgetFilter) {
+    budgetFilter.addEventListener('change', () => {
+      const budget = budgetFilter.value;
+      if (budget === '500+') {
+        filterWorkersByBudget(999999);
+      } else if (budget) {
+        const max = parseInt(budget.split('-')) || parseInt(budget);
+        filterWorkersByBudget(max);
+      } else {
+        filteredWorkers = [...allWorkersData];
+        displayAllWorkers();
+      }
+      updateResultsCount();
+    });
+  }
+  
+  console.log('✅ Event handlers setup complete');
 }
 
 function bindEvent(id, event, handler) {
@@ -641,20 +1070,40 @@ function bindEvent(id, event, handler) {
   }
 }
 
-// ============= NAVIGATION =============
+// ========================================
+// NAVIGATION
+// ========================================
 
 function showSection(sectionId) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(sectionId)?.classList.add('active');
   currentSection = sectionId;
+  console.log('📄 Showing section:', sectionId);
 }
 
 function showModal(modalId) {
   document.getElementById(modalId)?.classList.remove('hidden');
+  console.log('📋 Showing modal:', modalId);
 }
 
 function closeModal(modalId) {
   document.getElementById(modalId)?.classList.add('hidden');
+  console.log('✖️ Closing modal:', modalId);
 }
 
-console.log('✓ SkillBridge Connect loaded');
+// ========================================
+// ACTIONS
+// ========================================
+
+function bookWorker(workerId) {
+  const worker = allWorkersData.find(w => w.id === workerId);
+  if (worker) {
+    alert(`Booking ${worker.name}...\n\nPhone: ${worker.phone}\n\nPlease contact this worker directly to finalize booking!`);
+  }
+}
+
+// ========================================
+// APP LOADED
+// ========================================
+
+console.log('✅ SkillBridge Connect fully loaded and ready!');

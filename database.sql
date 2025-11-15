@@ -1,8 +1,10 @@
 -- SkillBridge Connect Database Schema
 CREATE DATABASE IF NOT EXISTS skillbridge;
 USE skillbridge;
+USE skillbridge;
+-- ALTER TABLE workers ADD COLUMN service_areas LONGTEXT AFTER travel_radius;
 -- Users table for authentication
-CREATE TABLE  IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20),
@@ -32,9 +34,10 @@ CREATE TABLE IF NOT EXISTS workers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-SELECT * FROM users;
-SELECT * FROM workers;
-
+SELECT *
+FROM users;
+SELECT *
+FROM workers;
 -- Create indexes for better performance
 -- CREATE INDEX idx_occupation ON workers(occupation);
 -- CREATE INDEX idx_location ON workers(location);

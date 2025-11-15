@@ -300,7 +300,24 @@
             </div>
         </div>
     </section>
+    <!-- Container for workers list -->
+<div id="workers-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; padding: 20px;">
+  <!-- Workers will display here -->
+</div>
 
+<!-- Search & Filter Input (Optional but helpful) -->
+<div id="search-bar" style="padding: 20px; background: #f5f5f5; margin-bottom: 20px;">
+  <input type="text" id="searchInput" placeholder="Search workers..." onkeyup="searchWorkers(this.value)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+</div>
+
+<!-- Filter Buttons (Optional) -->
+<div id="filter-buttons" style="padding: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+  <button onclick="displayAllWorkers()" style="padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">All Workers</button>
+  <button onclick="filterWorkersByOccupation('Plumber')" style="padding: 8px 16px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">Plumbers</button>
+  <button onclick="filterWorkersByOccupation('Electrician')" style="padding: 8px 16px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">Electricians</button>
+  <button onclick="filterWorkersByOccupation('Cleaner')" style="padding: 8px 16px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">Cleaners</button>
+  <button onclick="filterWorkersByBudget(300)" style="padding: 8px 16px; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">Budget (&lt;₹300)</button>
+</div>
     <!-- Chat Section -->
     <section id="chat" class="section">
         <div class="container">
@@ -444,7 +461,7 @@
     </div>
 
     <!-- AI Chat Assistant -->
-    <div id="ai-chat" class="ai-chat">
+    <!-- <div id="ai-chat" class="ai-chat">
         <div class="ai-chat-header" id="ai-chat-header">
             <i class="fas fa-robot"></i>
             <span>AI Assistant</span>
@@ -468,7 +485,7 @@
                 </button>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <script src="app.js"></script>
 </body>
