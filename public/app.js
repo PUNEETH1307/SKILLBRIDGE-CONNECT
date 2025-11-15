@@ -432,8 +432,8 @@ async function fetchWorkersFromSQL() {
 // ========================================
 function displayAllWorkers() {
   console.log('📋 Displaying workers...');
-  console.log('Workers count:', allWorkersData ? allWorkersData.length : 0);
-  console.log('Workers array:', allWorkersData);
+  console.log('Filtered workers count:', filteredWorkers ? filteredWorkers.length : 0);
+  console.log('Filtered workers array:', filteredWorkers);
   
   const workersGrid = document.getElementById('workers-grid');
   
@@ -445,20 +445,20 @@ function displayAllWorkers() {
   
   console.log('✅ Found workers-grid container');
   
-  // Make sure allWorkersData is an array
-  if (!Array.isArray(allWorkersData)) {
-    console.error('❌ allWorkersData is not an array:', allWorkersData);
-    allWorkersData = [];
+  // Make sure filteredWorkers is an array
+  if (!Array.isArray(filteredWorkers)) {
+    console.error('❌ filteredWorkers is not an array:', filteredWorkers);
+    filteredWorkers = [];
   }
   
-  if (allWorkersData.length === 0) {
+  if (filteredWorkers.length === 0) {
     console.warn('⚠️ No workers to display');
     workersGrid.innerHTML = `
       <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #999;">
         <p style="font-size: 18px;">📭 No workers found</p>
-        <p>Make sure database has workers or check API connection</p>
-        <button onclick="fetchWorkersFromSQL()" style="padding: 10px 20px; background: #2196F3; color: white; border: none; cursor: pointer; border-radius: 4px;">
-          🔄 Reload Workers
+        <p>Try adjusting your filters or search terms</p>
+        <button onclick="displayAllWorkers()" style="padding: 10px 20px; background: #2196F3; color: white; border: none; cursor: pointer; border-radius: 4px;">
+          🔄 Reload
         </button>
       </div>
     `;
@@ -466,7 +466,7 @@ function displayAllWorkers() {
   }
   
   try {
-    const htmlCards = allWorkersData.map(worker => {
+    const htmlCards = filteredWorkers.map(worker => {
       if (!worker) {
         console.warn('⚠️ Worker is null or undefined');
         return '';
@@ -476,13 +476,14 @@ function displayAllWorkers() {
     }).filter(card => card !== '').join('');
     
     workersGrid.innerHTML = htmlCards;
-    console.log(`✅ Displayed ${allWorkersData.length} workers`);
+    console.log(`✅ Displayed ${filteredWorkers.length} workers`);
     
   } catch (error) {
     console.error('❌ Error displaying workers:', error);
     workersGrid.innerHTML = `<div style="grid-column: 1 / -1; color: red; padding: 20px;">❌ Error: ${error.message}</div>`;
   }
 }
+
 
 
 function createWorkerCard(worker) {
@@ -656,20 +657,216 @@ function contactWorker(workerId) {
 // FILTER FUNCTIONS
 // ========================================
 
-function filterWorkersByOccupation(occupation) {
-  console.log('🔍 Filtering by occupation:', occupation);
+// ============= FILTER FUNCTIONS =============
+
+// ============= COMBINED FILTER STATE =============
+let activeFilters = {
+  occupation: '',
+  location: '',
+  budget: ''
+};
+
+function applyAllFilters() {
+  console.log('🔄 Applying all filters:', activeFilters);
   
-  if (!occupation || occupation === 'all') {
+  filteredWorkers = allWorkersData.filter(worker => {
+    let matches = true;
+
+    // Filter by occupation
+    if (activeFilters.occupation && activeFilters.occupation !== '') {
+      const workerOcc = (worker.occupation || '').toLowerCase();
+      const selectedOcc = activeFilters.occupation.toLowerCase();
+      matches = matches && (workerOcc === selectedOcc);
+    }
+
+    // Filter by location
+    if (activeFilters.location && activeFilters.location !== '') {
+      const workerLoc = (worker.location || '').toLowerCase();
+      const selectedLoc = activeFilters.location.toLowerCase();
+      matches = matches && (workerLoc.includes(selectedLoc) || selectedLoc.includes(workerLoc));
+    }
+
+    // Filter by budget
+    if (activeFilters.budget && activeFilters.budget !== '') {
+      const rate = parseFloat(worker.hourly_rate);
+      
+      if (activeFilters.budget === '500') {
+        matches = matches && (rate >= 500);
+      } else {
+        const [min, max] = activeFilters.budget.split('-');
+        const minRate = parseInt(min);
+        const maxRate = parseInt(max);
+        matches = matches && (rate >= minRate && rate <= maxRate);
+      }
+    }
+
+    return matches;
+  });
+
+  console.log('✅ Filtered workers count:', filteredWorkers.length);
+  displayAllWorkers();
+  updateResultsCount();
+}
+
+// ============= INDIVIDUAL FILTER FUNCTIONS =============
+
+function filterWorkersByOccupation(occupation) {
+  console.log('🔍 Setting occupation filter:', occupation);
+  activeFilters.occupation = occupation;
+  applyAllFilters();
+}
+
+function filterWorkersByLocation(location) {
+  console.log('🔍 Setting location filter:', location);
+  activeFilters.location = location;
+  applyAllFilters();
+}
+
+function handleBudgetFilter(budgetRange) {
+  console.log('🔍 Setting budget filter:', budgetRange);
+  activeFilters.budget = budgetRange;
+  applyAllFilters();
+}
+
+function searchWorkers(searchTerm) {
+  console.log('🔍 Searching for:', searchTerm);
+  
+  if (!searchTerm || searchTerm.trim() === '') {
+    // Reset to all data and apply other active filters
     filteredWorkers = [...allWorkersData];
-    displayAllWorkers();
-    updateResultsCount();
+    applyAllFilters();
     return;
   }
 
-  filteredWorkers = allWorkersData.filter(worker => 
-    worker.occupation.toLowerCase() === occupation.toLowerCase()
-  );
+  const term = searchTerm.toLowerCase().trim();
+  
+  // Start with all workers
+  filteredWorkers = allWorkersData.filter(worker => {
+    const name = (worker.name || '').toLowerCase();
+    const occupation = (worker.occupation || '').toLowerCase();
+    const location = (worker.location || '').toLowerCase();
+    const description = (worker.description || '').toLowerCase();
+    
+    let specialties = '';
+    try {
+      const specs = Array.isArray(worker.specialties)
+        ? worker.specialties
+        : JSON.parse(worker.specialties || '[]');
+      specialties = specs.map(s => s.toLowerCase()).join(' ');
+    } catch (e) {
+      specialties = '';
+    }
 
+    // Search match
+    const searchMatch = name.includes(term) || 
+           occupation.includes(term) || 
+           location.includes(term) || 
+           description.includes(term) ||
+           specialties.includes(term);
+
+    // AND apply other active filters
+    let otherFiltersMatch = true;
+
+    if (activeFilters.occupation && activeFilters.occupation !== '') {
+      const workerOcc = (worker.occupation || '').toLowerCase();
+      const selectedOcc = activeFilters.occupation.toLowerCase();
+      otherFiltersMatch = otherFiltersMatch && (workerOcc === selectedOcc);
+    }
+
+    if (activeFilters.location && activeFilters.location !== '') {
+      const workerLoc = (worker.location || '').toLowerCase();
+      const selectedLoc = activeFilters.location.toLowerCase();
+      otherFiltersMatch = otherFiltersMatch && (workerLoc.includes(selectedLoc) || selectedLoc.includes(workerLoc));
+    }
+
+    if (activeFilters.budget && activeFilters.budget !== '') {
+      const rate = parseFloat(worker.hourly_rate);
+      if (activeFilters.budget === '500') {
+        otherFiltersMatch = otherFiltersMatch && (rate >= 500);
+      } else {
+        const [min, max] = activeFilters.budget.split('-');
+        const minRate = parseInt(min);
+        const maxRate = parseInt(max);
+        otherFiltersMatch = otherFiltersMatch && (rate >= minRate && rate <= maxRate);
+      }
+    }
+
+    return searchMatch && otherFiltersMatch;
+  });
+
+  console.log('✅ Search + filter results:', filteredWorkers.length);
+  displayAllWorkers();
+  updateResultsCount();
+}
+
+function sortWorkers() {
+  const sortBy = document.getElementById('sort-by')?.value || '';
+  console.log('🔄 Sorting by:', sortBy);
+  
+  if (!sortBy) return;
+  
+  switch(sortBy) {
+    case 'rating':
+      filteredWorkers.sort((a, b) => parseFloat(b.rating || 0) - parseFloat(a.rating || 0));
+      break;
+    case 'price-low':
+      filteredWorkers.sort((a, b) => parseFloat(a.hourly_rate) - parseFloat(b.hourly_rate));
+      break;
+    case 'price-high':
+      filteredWorkers.sort((a, b) => parseFloat(b.hourly_rate) - parseFloat(a.hourly_rate));
+      break;
+    case 'experience':
+      filteredWorkers.sort((a, b) => parseFloat(b.experience) - parseFloat(a.experience));
+      break;
+  }
+  
+  displayAllWorkers();
+}
+
+function updateResultsCount() {
+  console.log('📊 Updating results count. Total filtered:', filteredWorkers.length);
+  const resultsCount = document.getElementById('results-count');
+  if (resultsCount) {
+    const count = filteredWorkers.length;
+    const text = count === 0 ? 'No workers found' : `Showing ${count} worker${count !== 1 ? 's' : ''}`;
+    resultsCount.textContent = text;
+    console.log('✅ Results count updated:', text);
+  }
+}
+
+// ============= HELPER FUNCTIONS =============
+
+function parseJSON(str) {
+  try {
+    return Array.isArray(str) ? str : JSON.parse(str || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+function escapeHtml(text) {
+  return (text || '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[char]));
+}
+
+// ============= FILTER FUNCTIONS =============
+
+function filterWorkersByOccupation(occupation) {
+  console.log('🔍 Filtering by occupation:', occupation);
+  console.log('Total workers:', allWorkersData.length);
+  
+  if (!occupation || occupation === '') {
+    filteredWorkers = [...allWorkersData];
+  } else {
+    filteredWorkers = allWorkersData.filter(worker => {
+      const workerOcc = (worker.occupation || '').toLowerCase();
+      const selectedOcc = occupation.toLowerCase();
+      return workerOcc === selectedOcc;
+    });
+  }
+
+  console.log('Filtered count:', filteredWorkers.length);
   displayAllWorkers();
   updateResultsCount();
 }
@@ -677,50 +874,42 @@ function filterWorkersByOccupation(occupation) {
 function filterWorkersByLocation(location) {
   console.log('🔍 Filtering by location:', location);
   
-  if (!location) {
+  if (!location || location === '') {
     filteredWorkers = [...allWorkersData];
-    displayAllWorkers();
-    updateResultsCount();
-    return;
+  } else {
+    filteredWorkers = allWorkersData.filter(worker => {
+      const workerLoc = (worker.location || '').toLowerCase();
+      const selectedLoc = location.toLowerCase();
+      return workerLoc.includes(selectedLoc) || selectedLoc.includes(workerLoc);
+    });
   }
 
-  filteredWorkers = allWorkersData.filter(worker => {
-    const workerLocation = worker.location.toLowerCase();
-    let serviceAreas = [];
-    try {
-      serviceAreas = Array.isArray(worker.service_areas)
-        ? worker.service_areas.map(a => a.toLowerCase())
-        : JSON.parse(worker.service_areas || '[]').map(a => a.toLowerCase());
-    } catch (e) {}
-
-    return workerLocation.includes(location.toLowerCase()) || 
-           serviceAreas.some(area => area.includes(location.toLowerCase()));
-  });
-
+  console.log('Filtered count:', filteredWorkers.length);
   displayAllWorkers();
   updateResultsCount();
 }
 
-function filterWorkersByBudget(maxRate) {
-  console.log('🔍 Filtering by budget: Below ₹' + maxRate);
+function handleBudgetFilter(budgetRange) {
+  console.log('🔍 Filtering by budget:', budgetRange);
   
-  filteredWorkers = allWorkersData.filter(worker => {
-    const rate = parseFloat(worker.hourly_rate);
-    return rate <= maxRate;
-  });
+  if (!budgetRange || budgetRange === '') {
+    filteredWorkers = [...allWorkersData];
+  } else if (budgetRange === '500') {
+    filteredWorkers = allWorkersData.filter(w => {
+      const rate = parseFloat(w.hourly_rate);
+      return rate >= 500;
+    });
+  } else {
+    const [min, max] = budgetRange.split('-');
+    const minRate = parseInt(min);
+    const maxRate = parseInt(max);
+    filteredWorkers = allWorkersData.filter(w => {
+      const rate = parseFloat(w.hourly_rate);
+      return rate >= minRate && rate <= maxRate;
+    });
+  }
 
-  displayAllWorkers();
-  updateResultsCount();
-}
-
-function filterWorkersByRating(minRating) {
-  console.log('🔍 Filtering by minimum rating:', minRating);
-  
-  filteredWorkers = allWorkersData.filter(worker => {
-    const rating = parseFloat(worker.rating) || 0;
-    return rating >= minRating;
-  });
-
+  console.log('Filtered count:', filteredWorkers.length);
   displayAllWorkers();
   updateResultsCount();
 }
@@ -730,92 +919,52 @@ function searchWorkers(searchTerm) {
   
   if (!searchTerm || searchTerm.trim() === '') {
     filteredWorkers = [...allWorkersData];
-    displayAllWorkers();
-    updateResultsCount();
-    return;
+  } else {
+    const term = searchTerm.toLowerCase().trim();
+    filteredWorkers = allWorkersData.filter(worker => {
+      const name = (worker.name || '').toLowerCase();
+      const occupation = (worker.occupation || '').toLowerCase();
+      const location = (worker.location || '').toLowerCase();
+      const description = (worker.description || '').toLowerCase();
+      
+      return name.includes(term) || 
+             occupation.includes(term) || 
+             location.includes(term) || 
+             description.includes(term);
+    });
   }
 
-  const term = searchTerm.toLowerCase().trim();
-  filteredWorkers = allWorkersData.filter(worker => {
-    const name = worker.name.toLowerCase();
-    const occupation = worker.occupation.toLowerCase();
-    const location = worker.location.toLowerCase();
-    const description = (worker.description || '').toLowerCase();
-    
-    let specialties = '';
-    try {
-      const specs = Array.isArray(worker.specialties)
-        ? worker.specialties
-        : JSON.parse(worker.specialties || '[]');
-      specialties = specs.map(s => s.toLowerCase()).join(' ');
-    } catch (e) {}
-
-    return name.includes(term) || 
-           occupation.includes(term) || 
-           location.includes(term) || 
-           description.includes(term) ||
-           specialties.includes(term);
-  });
-
+  console.log('Filtered count:', filteredWorkers.length);
   displayAllWorkers();
   updateResultsCount();
 }
 
-function applyMultipleFilters(filters) {
-  console.log('🔍 Applying multiple filters:', filters);
+function updateResultsCount() {
+  console.log('📊 Updating results count. Total filtered:', filteredWorkers.length);
+  const resultsCount = document.getElementById('results-count');
+  if (resultsCount) {
+    const count = filteredWorkers.length;
+    const text = count === 0 ? 'No workers found' : `Showing ${count} worker${count !== 1 ? 's' : ''}`;
+    resultsCount.textContent = text;
+    console.log('✅ Results count updated:', text);
+  }
+}
+
+function sortWorkers() {
+  const sortBy = document.getElementById('sort-by').value;
+  console.log('🔄 Sorting by:', sortBy);
   
-  filteredWorkers = allWorkersData;
-
-  // Filter by occupation
-  if (filters.occupation && filters.occupation !== 'all') {
-    filteredWorkers = filteredWorkers.filter(w => 
-      w.occupation.toLowerCase() === filters.occupation.toLowerCase()
-    );
+  if (sortBy === 'rating') {
+    filteredWorkers.sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0));
+  } else if (sortBy === 'price-low') {
+    filteredWorkers.sort((a, b) => parseFloat(a.hourly_rate) - parseFloat(b.hourly_rate));
+  } else if (sortBy === 'price-high') {
+    filteredWorkers.sort((a, b) => parseFloat(b.hourly_rate) - parseFloat(a.hourly_rate));
+  } else if (sortBy === 'experience') {
+    filteredWorkers.sort((a, b) => parseInt(b.experience) - parseInt(a.experience));
   }
-
-  // Filter by location
-  if (filters.location) {
-    filteredWorkers = filteredWorkers.filter(w => {
-      let serviceAreas = [];
-      try {
-        serviceAreas = Array.isArray(w.service_areas)
-          ? w.service_areas.map(a => a.toLowerCase())
-          : JSON.parse(w.service_areas || '[]').map(a => a.toLowerCase());
-      } catch (e) {}
-      
-      return w.location.toLowerCase().includes(filters.location.toLowerCase()) ||
-             serviceAreas.some(area => area.includes(filters.location.toLowerCase()));
-    });
-  }
-
-  // Filter by budget
-  if (filters.maxBudget) {
-    filteredWorkers = filteredWorkers.filter(w => {
-      const rate = parseFloat(w.hourly_rate);
-      return rate <= filters.maxBudget;
-    });
-  }
-
-  // Filter by rating
-  if (filters.minRating) {
-    filteredWorkers = filteredWorkers.filter(w => {
-      const rating = parseFloat(w.rating) || 0;
-      return rating >= filters.minRating;
-    });
-  }
-
-  // Search term
-  if (filters.searchTerm) {
-    const term = filters.searchTerm.toLowerCase();
-    filteredWorkers = filteredWorkers.filter(w => {
-      return w.name.toLowerCase().includes(term) ||
-             w.occupation.toLowerCase().includes(term) ||
-             w.location.toLowerCase().includes(term);
-    });
-  }
-
+  
   displayAllWorkers();
-  updateResultsCount();
 }
 
 // ========================================
