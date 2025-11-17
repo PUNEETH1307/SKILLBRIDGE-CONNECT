@@ -264,89 +264,172 @@ async function handleSignup(e) {
 // ========================================
 
 async function handleWorkerRegistration(e) {
-e.preventDefault();
-console.log('📝 Submitting worker registration...');
+  e.preventDefault();
+  console.log('📝 Submitting worker registration...');
 
-// Get auth token from localStorage
-const authToken = localStorage.getItem('authToken');
+  const authToken = localStorage.getItem('authToken');
 
-if (!authToken) {
-alert('❌ You must login first to register as a worker');
-return;
+  if (!authToken) {
+    alert('❌ You must login first to register as a worker');
+    return;
+  }
+
+  try {
+    // Collect specialties
+    const specialtyCheckboxes = document.querySelectorAll('#specialties-container input[type="checkbox"]:checked');
+    const specialties = Array.from(specialtyCheckboxes).map(cb => cb.value);
+
+    // Collect work areas
+    const areaCheckboxes = document.querySelectorAll('#work-areas-container input[type="checkbox"]:checked');
+    const service_areas = Array.from(areaCheckboxes).map(cb => cb.value);
+
+    // Collect form data
+    const formData = {
+      name: document.getElementById('worker-name').value,
+      phone: document.getElementById('worker-phone').value,
+      email: document.getElementById('worker-email').value,
+      occupation: document.getElementById('worker-occupation').value,
+      experience: parseInt(document.getElementById('worker-experience').value),
+      specialties: specialties,
+      hourly_rate: parseInt(document.getElementById('worker-rate').value),
+      available_hours: document.getElementById('worker-hours').value,
+      location: document.getElementById('worker-location').value,
+      travel_radius: document.getElementById('worker-radius').value,
+      service_areas: service_areas,
+      description: document.getElementById('worker-description').value,
+      certifications: document.getElementById('worker-certifications').value
+    };
+
+    console.log('📋 Form data:', formData);
+
+    // Validate
+    if (!formData.name || !formData.phone || !formData.email || !formData.occupation || !formData.hourly_rate || !formData.location) {
+      alert('❌ Please fill in all required fields');
+      return;
+    }
+
+    // Show loading
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⏳ Registering...';
+    }
+
+    // Send to server
+    console.log('🚀 Sending to server...');
+    const response = await fetch('http://localhost:3000/api/workers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify(formData)
+    });
+
+    console.log('📊 Response status:', response.status);
+    const data = await response.json();
+    console.log('📥 Response:', data);
+
+    if (data.success) {
+      // ✅ NEW: Upload certificates
+      await uploadCertificatesAfterRegistration(data.data.id);
+
+      // Show success
+      document.getElementById('success-title').textContent = 'Registration Successful!';
+      document.getElementById('success-message').textContent = 'Your worker profile has been created successfully!';
+      showModal('success-modal');
+
+      // Reset form
+      document.getElementById('worker-form').reset();
+      document.getElementById('specialties-container').innerHTML = '';
+      
+      // Reset certificate list
+      certificatesToUpload = [];
+      displayCertificatesToUpload();
+
+      // Refresh workers
+      await fetchWorkersFromSQL();
+
+      console.log('✅ Worker registered successfully');
+    } else {
+      alert('❌ ' + (data.message || 'Registration failed'));
+      console.error('❌ Server error:', data);
+    }
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit';
+    }
+
+  } catch (error) {
+    console.error('❌ Registration error:', error);
+    alert('❌ Error: ' + error.message);
+    
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit';
+    }
+  }
+}
+// ============= LOAD & DISPLAY CERTIFICATES IN PROFILE =============
+
+async function loadProfileCertificates(workerId) {
+  console.log('📄 Loading certificates for worker:', workerId);
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/certificates/${workerId}`);
+    const data = await response.json();
+    
+    console.log('📥 Certificates response:', data);
+    
+    const container = document.getElementById(`profile-certificates-${workerId}`);
+    if (!container) {
+      console.error('❌ Certificate container not found for worker', workerId);
+      return;
+    }
+
+    if (!data.success || !data.data || data.data.length === 0) {
+      console.log('ℹ️ No certificates found');
+      container.innerHTML = '<p style="color: #999;">No certificates uploaded</p>';
+      return;
+    }
+
+    console.log('✅ Found', data.data.length, 'certificates');
+
+    let html = '<div style="display: grid; gap: 12px;">';
+    
+    data.data.forEach(cert => {
+      const uploadDate = new Date(cert.uploaded_at).toLocaleDateString();
+      
+      html += `
+        <div style="background: white; padding: 12px; border-radius: 4px; border-left: 4px solid #4CAF50;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+              <strong style="color: #333;">📄 ${escapeHtml(cert.certificate_name)}</strong>
+              ${cert.description ? `<p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHtml(cert.description)}</p>` : ''}
+              <small style="color: #999;">Uploaded: ${uploadDate}</small>
+            </div>
+            <a href="${cert.file_path}" target="_blank" style="padding: 8px 12px; background: #2196F3; color: white; border-radius: 3px; text-decoration: none; font-size: 12px; white-space: nowrap;">📥 Download</a>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    
+    console.log('✅ Displaying', data.data.length, 'certificates');
+    container.innerHTML = html;
+
+  } catch (error) {
+    console.error('❌ Error loading certificates:', error);
+    const container = document.getElementById(`profile-certificates-${workerId}`);
+    if (container) {
+      container.innerHTML = '<p style="color: #999;">Error loading certificates</p>';
+    }
+  }
 }
 
-try {
-// Collect specialties
-const specialtyCheckboxes = document.querySelectorAll('#specialties-container input[type="checkbox"]:checked');
-const specialties = Array.from(specialtyCheckboxes).map(cb => cb.value);
-
-
-// Collect work areas
-const areaCheckboxes = document.querySelectorAll('#work-areas-container input[type="checkbox"]:checked');
-const service_areas = Array.from(areaCheckboxes).map(cb => cb.value);
-
-// Collect form data
-const formData = {
-  name: document.getElementById('worker-name').value,
-  phone: document.getElementById('worker-phone').value,
-  email: document.getElementById('worker-email').value,
-  occupation: document.getElementById('worker-occupation').value,
-  experience: parseInt(document.getElementById('worker-experience').value),
-  specialties: specialties,
-  hourly_rate: parseInt(document.getElementById('worker-rate').value),
-  available_hours: document.getElementById('worker-hours').value,
-  location: document.getElementById('worker-location').value,
-  travel_radius: document.getElementById('worker-radius').value,
-  service_areas: service_areas,
-  description: document.getElementById('worker-description').value,
-  certifications: document.getElementById('worker-certifications').value
-};
-
-console.log('📋 Form data:', formData);
-
-// Validate
-if (!formData.name || !formData.phone || !formData.email || !formData.occupation || !formData.hourly_rate || !formData.location) {
-  alert('❌ Please fill in all required fields');
-  return;
-}
-
-// Send to server
-console.log('🚀 Sending to server...');
-console.log('📡 Token:', authToken.substring(0, 20) + '...');
-
-const response = await fetch('http://localhost:3000/api/workers', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${authToken}`
-  },
-  body: JSON.stringify(formData)
-});
-
-console.log('📊 Response status:', response.status);
-const data = await response.json();
-console.log('📥 Response:', data);
-
-if (data.success) {
-  // Show success
-  document.getElementById('success-title').textContent = 'Registration Successful!';
-  document.getElementById('success-message').textContent = 'Your worker profile has been created successfully!';
-  showModal('success-modal');
-
-  // Reset form
-  document.getElementById('worker-form').reset();
-  document.getElementById('specialties-container').innerHTML = '';
-
-  console.log('✅ Worker registered successfully');
-} else {
-  alert('❌ ' + (data.message || 'Registration failed'));
-  console.error('❌ Server error:', data);
-}
-} catch (error) {
-console.error('❌ Registration error:', error);
-alert('❌ Error: ' + error.message);
-}
-}
 
 
 // ========================================
@@ -567,7 +650,7 @@ async function viewWorkerProfile(workerId) {
     console.error('Profile load error:', error);
   }
 }
-function displayWorkerProfile(worker) {
+async function displayWorkerProfile(worker) {
   const profileContent = document.getElementById('profile-content');
   if (!profileContent) {
     console.error('❌ profile-content element not found');
@@ -576,6 +659,22 @@ function displayWorkerProfile(worker) {
   
   const specialties = parseJSON(worker.specialties);
   const serviceAreas = parseJSON(worker.service_areas);
+  
+  // Check if user already rated this worker
+  let userRating = null;
+  if (authToken) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/ratings/${worker.id}/user`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        userRating = data.data;
+      }
+    } catch (e) {
+      console.log('User rating check error:', e);
+    }
+  }
   
   profileContent.innerHTML = `
     <div style="padding: 20px; background: white;">
@@ -588,7 +687,7 @@ function displayWorkerProfile(worker) {
             <h1 style="margin: 0; font-size: 28px;">${escapeHtml(worker.name)}</h1>
             <p style="margin: 8px 0; font-size: 18px; opacity: 0.9;">${escapeHtml(worker.occupation)}</p>
             <div style="display: flex; gap: 15px; margin-top: 12px; font-size: 14px;">
-              <span>⭐ ${worker.rating || 0}/5</span>
+              <span>⭐ ${worker.rating || 0}/5 (${worker.reviews_count || worker.total_reviews || 0} reviews)</span>
               <span>💼 ${worker.experience} years</span>
               <span>💰 ₹${worker.hourly_rate}/hr</span>
               ${worker.verified ? '<span style="background: rgba(255,255,255,0.3); padding: 4px 10px; border-radius: 4px;">✓ Verified</span>' : ''}
@@ -599,13 +698,13 @@ function displayWorkerProfile(worker) {
       
       <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
         <div class="profile-main">
-          <div style="background: #999; padding: 20px;border:0.5px solid black; border-radius: 8px; margin-bottom: 20px;">
+          <div style="background: #999; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
             <h3 style="margin-top: 0; color: #333;">About</h3>
             <p style="color: #666; line-height: 1.6;">${escapeHtml(worker.description || 'No description provided.')}</p>
           </div>
           
           ${specialties.length > 0 ? `
-          <div style="background: #999; padding: 20px; border:0.5px solid black;  border-radius: 8px; margin-bottom: 20px;">
+          <div style="background: #999; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
             <h3 style="margin-top: 0; color: #333;">Skills & Specialties</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
               ${specialties.map(s => `<div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #2196F3; color: #333;">${escapeHtml(s)}</div>`).join('')}
@@ -614,7 +713,7 @@ function displayWorkerProfile(worker) {
           ` : ''}
           
           ${serviceAreas.length > 0 ? `
-          <div style="background: #999; padding: 20px; border:0.5px solid black;  border-radius: 8px; margin-bottom: 20px;">
+          <div style="background: #999; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
             <h3 style="margin-top: 0; color: #333;">Service Areas</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
               ${serviceAreas.map(a => `<div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #4CAF50; color: #333;">📍 ${escapeHtml(a)}</div>`).join('')}
@@ -623,27 +722,677 @@ function displayWorkerProfile(worker) {
           ` : ''}
           
           ${worker.certifications ? `
-          <div style="background: #999; padding: 20px; border:0.5px solid black;  border-radius: 8px;">
+          <div style="background: #999; padding: 20px; border-radius: 8px;">
             <h3 style="margin-top: 0; color: #333;">Certifications</h3>
             <p style="color: #666;">${escapeHtml(worker.certifications)}</p>
           </div>
           ` : ''}
         </div>
+        // In displayWorkerProfile(), add this after the About section:
+
+${/* Certificates Section */ ''}
+<div id="certificates-section-${worker.id}" style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+  <h3 style="margin-top: 0; color: #333;">📄 Certificates</h3>
+  <div id="profile-certificates-${worker.id}">Loading certificates...</div>
+</div>
+
         
         <div class="profile-sidebar">
-          <div style="background: #2196F3; color: white; padding: 20px; border-radius: 8px; text-align: center;">
+          <div style="background: #2196F3; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
             <h3 style="margin-top: 0;">Contact Worker</h3>
             <button style="width: 100%; padding: 12px; background: white; color: #2196F3; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 10px 0;" onclick="contactWorker(${worker.id})">
               📞 Call Now
             </button>
             <p style="font-size: 12px; margin: 10px 0 0 0; opacity: 0.9;">Response time: Usually within 1 hour</p>
           </div>
+          
+          <!-- RATING SECTION -->
+          <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px; text-align: center;">
+            <h3 style="margin-top: 0; color: #333;">⭐ Rate This Worker</h3>
+            
+            ${userRating ? `
+              <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Your Rating: ${userRating.rating}/5</p>
+            ` : `
+              <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Share your experience</p>
+            `}
+            
+            <div id="star-rating-${worker.id}" style="font-size: 40px; margin: 15px 0; cursor: pointer; letter-spacing: 10px;">
+              <span onclick="window.selectRating(${worker.id}, 1)" style="cursor: pointer;">☆</span>
+              <span onclick="window.selectRating(${worker.id}, 2)" style="cursor: pointer;">☆</span>
+              <span onclick="window.selectRating(${worker.id}, 3)" style="cursor: pointer;">☆</span>
+              <span onclick="window.selectRating(${worker.id}, 4)" style="cursor: pointer;">☆</span>
+              <span onclick="window.selectRating(${worker.id}, 5)" style="cursor: pointer;">☆</span>
+            </div>
+            
+            <textarea id="review-text-${worker.id}" placeholder="Write your review (optional)..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin: 10px 0; resize: vertical; min-height: 60px; font-family: Arial;"></textarea>
+            
+            <button onclick="window.submitRating(${worker.id})" style="width: 100%; padding: 12px; background: #ffc107; color: #333; border: 2px solid #ff9800; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 14px;">
+              ⭐ Submit Rating
+            </button>
+            
+            <p style="font-size: 11px; color: #999; margin: 10px 0 0 0;">Click stars to rate (1-5)</p>
+          </div>
         </div>
       </div>
     </div>
   `;
-  console.log('✅ Profile displayed');
+  // Load certificates
+console.log('📄 Loading certificates for worker profile...');
+loadProfileCertificates(worker.id);
+
+  // Add this at end of displayWorkerProfile()
+loadProfileCertificates(worker.id);
+
+// Add this function:
+async function loadProfileCertificates(workerId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/certificates/${workerId}`);
+    const data = await response.json();
+    
+    const container = document.getElementById(`profile-certificates-${workerId}`);
+    if (!container) return;
+
+    if (!data.success || data.data.length === 0) {
+      container.innerHTML = '<p style="color: #999;">No certificates</p>';
+      return;
+    }
+
+    let html = '<div style="display: grid; gap: 10px;">';
+    data.data.forEach(cert => {
+      html += `
+        <div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #4CAF50;">
+          <strong>${escapeHtml(cert.certificate_name)}</strong>
+          ${cert.description ? `<p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHtml(cert.description)}</p>` : ''}
+          <a href="${cert.file_path}" target="_blank" style="color: #2196F3; font-size: 12px;">📥 Download PDF</a>
+        </div>
+      `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+  } catch (error) {
+    console.error('Error loading certificates:', error);
+  }
 }
+
+  console.log('✅ Profile displayed with rating section');
+}
+
+// ============= CERTIFICATE FUNCTIONS =============
+async function uploadCertificate() {
+  console.log('📤 Starting certificate upload...');
+  
+  // ✅ FIXED: Get token from localStorage (not from local scope)
+  const token = localStorage.getItem('authToken');
+  console.log('Auth token:', token ? 'YES' : 'NO');
+  
+  if (!token) {
+    alert('❌ You must login first to upload certificates');
+    return;
+  }
+  
+  const certName = document.getElementById('certificate-name')?.value?.trim();
+  const certDesc = document.getElementById('certificate-description')?.value?.trim() || '';
+  const certFileInput = document.getElementById('certificate-file');
+  
+  console.log('Cert name:', certName);
+  console.log('Cert file input:', certFileInput);
+
+  if (!certName) {
+    alert('❌ Please enter certificate name');
+    return;
+  }
+
+  if (!certFileInput || !certFileInput.files || certFileInput.files.length === 0) {
+    alert('❌ Please select a PDF file');
+    return;
+  }
+
+  const certFile = certFileInput.files[0];
+  console.log('Cert file:', certFile);
+  console.log('File name:', certFile.name);
+  console.log('File type:', certFile.type);
+  console.log('File size:', certFile.size);
+
+  if (!certFile) {
+    alert('❌ File not found');
+    return;
+  }
+
+  // ✅ Check file extension
+  const fileName = certFile.name.toLowerCase();
+  const fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
+  
+  console.log('File extension:', fileExtension);
+
+  if (fileExtension !== 'pdf') {
+    alert('❌ Only PDF files are allowed. You selected: ' + fileExtension);
+    return;
+  }
+
+  // Check file size
+  if (certFile.size > 5 * 1024 * 1024) {
+    alert('❌ File size must be less than 5MB. Your file: ' + (certFile.size / 1024 / 1024).toFixed(2) + 'MB');
+    return;
+  }
+
+  try {
+    const btn = document.getElementById('upload-cert-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Uploading...';
+    }
+
+    const formData = new FormData();
+    formData.append('certificate_name', certName);
+    formData.append('description', certDesc);
+    formData.append('certificate_file', certFile);
+
+    console.log('🚀 Uploading to:', `${API_BASE_URL}/certificates`);
+    console.log('📡 Token:', token.substring(0, 20) + '...');
+
+    const response = await fetch(`${API_BASE_URL}/certificates`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`  // ✅ FIXED: Use token from localStorage
+      },
+      body: formData
+    });
+
+    console.log('Response status:', response.status);
+    const data = await response.json();
+    console.log('Response data:', data);
+
+    if (data.success) {
+      alert('✅ Certificate uploaded successfully!');
+      
+      // Clear form
+      document.getElementById('certificate-name').value = '';
+      document.getElementById('certificate-description').value = '';
+      document.getElementById('certificate-file').value = '';
+      
+      // Refresh certificates list
+      if (typeof loadCertificates === 'function') {
+        loadCertificates();
+      }
+      
+    } else {
+      alert('❌ ' + (data.message || 'Upload failed'));
+    }
+    
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '📤 Upload Certificate';
+    }
+
+  } catch (error) {
+    console.error('❌ Upload error:', error);
+    alert('❌ Error: ' + error.message);
+    
+    const btn = document.getElementById('upload-cert-btn');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '📤 Upload Certificate';
+    }
+  }
+}
+// ============= COMBINED CERTIFICATE MANAGEMENT =============
+
+let certificatesToUpload = []; // Store certificates to upload with registration
+
+function addCertificateToList() {
+  console.log('➕ Adding certificate to list...');
+  
+  const certName = document.getElementById('certificate-name-field')?.value?.trim();
+  const certDesc = document.getElementById('certificate-description-field')?.value?.trim() || '';
+  const certFileInput = document.getElementById('certificate-file-field');
+  
+  // Certificate name is required if file is selected
+  if (certFileInput && certFileInput.files.length > 0) {
+    if (!certName) {
+      alert('❌ Please enter certificate name');
+      return;
+    }
+  } else {
+    // If no file, skip (certificates are optional)
+    alert('❌ Please select a PDF file');
+    return;
+  }
+  
+  const certFile = certFileInput.files;
+  
+  // Check extension
+  const fileName = certFile.name.toLowerCase();
+  const fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
+  
+  if (fileExtension !== 'pdf') {
+    alert('❌ Only PDF files allowed');
+    return;
+  }
+  
+  // Check size
+  if (certFile.size > 5 * 1024 * 1024) {
+    alert('❌ File size must be less than 5MB');
+    return;
+  }
+  
+  // Add to list
+  const certId = Date.now();
+  certificatesToUpload.push({
+    id: certId,
+    name: certName,
+    description: certDesc,
+    file: certFile
+  });
+  
+  console.log('✅ Certificate added to list. Total:', certificatesToUpload.length);
+  
+  // Clear form
+  document.getElementById('certificate-name-field').value = '';
+  document.getElementById('certificate-description-field').value = '';
+  document.getElementById('certificate-file-field').value = '';
+  
+  // Update display
+  displayCertificatesToUpload();
+}
+
+function removeCertificateFromList(certId) {
+  certificatesToUpload = certificatesToUpload.filter(c => c.id !== certId);
+  console.log('🗑️ Certificate removed. Total:', certificatesToUpload.length);
+  displayCertificatesToUpload();
+}
+
+function displayCertificatesToUpload() {
+  const container = document.getElementById('certificates-container');
+  
+  if (certificatesToUpload.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  
+  let html = '<h4 style="margin-top: 0;">Certificates to Upload:</h4><div style="display: grid; gap: 8px;">';
+  
+  certificatesToUpload.forEach(cert => {
+    html += `
+      <div style="background: #e8f5e9; padding: 10px; border-radius: 4px; border-left: 4px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong>${escapeHtml(cert.name)}</strong>
+          <p style="font-size: 12px; color: #666; margin: 3px 0;">${escapeHtml(cert.file.name)} (${(cert.file.size / 1024).toFixed(0)}KB)</p>
+        </div>
+        <button onclick="removeCertificateFromList(${cert.id})" style="background: #f44336; color: white; border: none; border-radius: 3px; padding: 5px 10px; cursor: pointer; font-size: 12px;">🗑️</button>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function uploadCertificatesAfterRegistration(workerId) {
+  console.log('📄 Uploading certificates for worker:', workerId);
+  
+  if (certificatesToUpload.length === 0) {
+    console.log('ℹ️ No certificates to upload');
+    return true;
+  }
+  
+  const token = localStorage.getItem('authToken');
+  
+  for (let cert of certificatesToUpload) {
+    try {
+      const formData = new FormData();
+      formData.append('certificate_name', cert.name);
+      formData.append('description', cert.description);
+      formData.append('certificate_file', cert.file);
+      
+      console.log('📤 Uploading:', cert.name);
+      
+      const response = await fetch(`${API_BASE_URL}/certificates`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.error('❌ Certificate upload failed:', data.message);
+        alert('⚠️ Warning: Certificate upload failed: ' + data.message);
+      } else {
+        console.log('✅ Certificate uploaded:', cert.name);
+      }
+    } catch (error) {
+      console.error('❌ Error uploading certificate:', error);
+      alert('⚠️ Warning: Could not upload certificate ' + cert.name);
+    }
+  }
+  
+  // Clear list after upload
+  certificatesToUpload = [];
+  displayCertificatesToUpload();
+  
+  return true;
+}
+
+
+async function loadCertificates(workerId = null) {
+  // If no workerId provided, get from current user
+  if (!workerId && !document.getElementById('worker-form')) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/certificates/${workerId}`);
+    const data = await response.json();
+
+    const list = document.getElementById('certificates-list');
+    if (!list) return;
+
+    if (!data.success || data.data.length === 0) {
+      list.innerHTML = '<p style="color: #999;">No certificates uploaded yet</p>';
+      return;
+    }
+
+    let html = '<h4>Uploaded Certificates:</h4><div style="display: grid; gap: 10px;">';
+    
+    data.data.forEach(cert => {
+      html += `
+        <div style="background: #f0f0f0; padding: 12px; border-radius: 4px; border-left: 4px solid #2196F3;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong>📄 ${escapeHtml(cert.certificate_name)}</strong>
+              ${cert.description ? `<p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHtml(cert.description)}</p>` : ''}
+              <small style="color: #999;">Uploaded: ${new Date(cert.uploaded_at).toLocaleDateString()}</small>
+            </div>
+            <div style="display: flex; gap: 5px;">
+              <a href="${cert.file_path}" target="_blank" style="padding: 6px 12px; background: #2196F3; color: white; border-radius: 3px; text-decoration: none; font-size: 12px;">📥 View</a>
+              <button onclick="deleteCertificate(${cert.id})" style="padding: 6px 12px; background: #f44336; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">🗑️ Delete</button>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    list.innerHTML = html;
+
+  } catch (error) {
+    console.error('Error loading certificates:', error);
+  }
+}
+
+async function deleteCertificate(certificateId) {
+  if (!confirm('Are you sure you want to delete this certificate?')) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/certificates/${certificateId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert('✅ Certificate deleted');
+      loadCertificates();
+    } else {
+      alert('❌ ' + data.message);
+    }
+  } catch (error) {
+    console.error('Error deleting:', error);
+    alert('❌ Error: ' + error.message);
+  }
+}
+
+
+
+// ============= RATING FUNCTIONS =============
+// ============= GLOBAL RATING FUNCTIONS =============
+
+// Make functions available globally
+window.selectedRating = 0;
+
+window.selectRating = function(workerId, rating) {
+  window.selectedRating = rating;
+  console.log('⭐ Selected rating:', rating, 'for worker:', workerId);
+  
+  // Update star display
+  const starContainer = document.getElementById(`star-rating-${workerId}`);
+  if (starContainer) {
+    const spans = starContainer.querySelectorAll('span');
+    spans.forEach((span, index) => {
+      if (index < rating) {
+        span.textContent = '★';
+        span.style.color = '#ffc107';
+      } else {
+        span.textContent = '☆';
+        span.style.color = '#ccc';
+      }
+    });
+  }
+  
+  console.log('✅ Stars updated');
+};
+
+window.submitRating = async function(workerId) {
+  console.log('🚀 submitRating called for worker:', workerId);
+  console.log('Rating selected:', window.selectedRating);
+  
+  if (!authToken) {
+    alert('❌ Please login first to rate workers');
+    return;
+  }
+  
+  if (window.selectedRating === 0) {
+    alert('❌ Please select a rating by clicking stars');
+    return;
+  }
+  
+  const reviewText = document.getElementById(`review-text-${workerId}`)?.value || '';
+  
+  try {
+    console.log('📤 Submitting to:', `${API_BASE_URL}/ratings`);
+    
+    const response = await fetch(`${API_BASE_URL}/ratings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({
+        worker_id: parseInt(workerId),
+        rating: window.selectedRating,
+        review: reviewText
+      })
+    });
+    
+    const data = await response.json();
+    console.log('✅ Response:', data);
+    
+    if (data.success) {
+      alert('✅ Thank you! Your ' + window.selectedRating + ' star rating has been submitted!');
+      
+      // Reset
+      window.selectedRating = 0;
+      
+      // Refresh data
+      await fetchWorkersFromSQL();
+      const worker = allWorkersData.find(w => w.id === parseInt(workerId));
+      if (worker) {
+        displayWorkerProfile(worker);
+      }
+      
+    } else {
+      alert('❌ Error: ' + data.message);
+    }
+  } catch (error) {
+    console.error('❌ Error:', error);
+    alert('❌ Error: ' + error.message);
+  }
+};
+
+// ============= RATING FUNCTIONS - FIXED =============
+
+let selectedRating = 0;
+
+
+function selectRating(workerId, rating) {
+  selectedRating = rating;
+  console.log('⭐ Selected rating:', rating, 'for worker:', workerId);
+  
+  // Update star display
+  const starContainer = document.getElementById(`star-rating-${workerId}`);
+  if (!starContainer) {
+    console.error('❌ Star container not found for worker', workerId);
+    return;
+  }
+  
+  const stars = starContainer.querySelectorAll('.star');
+  console.log('Stars found:', stars.length);
+  
+  stars.forEach((star, index) => {
+    if (index < rating) {
+      star.textContent = '★';
+      star.style.color = '#ffc107';
+    } else {
+      star.textContent = '☆';
+      star.style.color = '#ccc';
+    }
+  });
+  
+  // Enable submit button
+  const submitBtn = document.getElementById(`submit-rating-btn-${workerId}`);
+  if (submitBtn) {
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = '1';
+    submitBtn.style.cursor = 'pointer';
+    submitBtn.style.backgroundColor = '#ffc107';
+    console.log('✅ Submit button enabled');
+  } else {
+    console.error('❌ Submit button not found for worker', workerId);
+  }
+}
+
+async function submitRating(workerId) {
+  console.log('🚀 submitRating() called for worker:', workerId);
+  console.log('Selected rating:', selectedRating);
+  console.log('Auth token:', authToken ? 'YES' : 'NO');
+  
+  if (!authToken) {
+    console.error('❌ No auth token');
+    alert('❌ Please login to rate workers');
+    showModal('login-modal');
+    return;
+  }
+  
+  if (selectedRating === 0) {
+    console.error('❌ No rating selected');
+    alert('❌ Please select a rating (1-5 stars)');
+    return;
+  }
+  
+  const reviewText = document.getElementById(`review-text-${workerId}`)?.value || '';
+  
+  console.log('📤 Submitting rating:', { 
+    workerId, 
+    rating: selectedRating, 
+    review: reviewText,
+    apiUrl: `${API_BASE_URL}/ratings`
+  });
+  
+  try {
+    // Show loading state
+    const submitBtn = document.getElementById(`submit-rating-btn-${workerId}`);
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⏳ Submitting...';
+    }
+    
+    const payload = {
+      worker_id: parseInt(workerId),
+      rating: parseInt(selectedRating),
+      review: reviewText
+    };
+    
+    console.log('📋 Payload:', JSON.stringify(payload));
+    
+    const response = await fetch(`${API_BASE_URL}/ratings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    console.log('📊 Response status:', response.status);
+    
+    const data = await response.json();
+    console.log('📥 Response data:', data);
+    
+    if (data.success) {
+      console.log('✅ Rating submitted successfully');
+      alert('✅ Thank you for rating! Your feedback helps others.\n\nRating: ' + selectedRating + ' stars');
+      
+      // Reset UI
+      selectedRating = 0;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⭐ Submit Rating';
+        submitBtn.style.opacity = '0.5';
+      }
+      
+      // Clear stars display
+      const starContainer = document.getElementById(`star-rating-${workerId}`);
+      if (starContainer) {
+        const stars = starContainer.querySelectorAll('.star');
+        stars.forEach(star => {
+          star.textContent = '☆';
+          star.style.color = '#ccc';
+        });
+      }
+      
+      // Clear review text
+      const reviewInput = document.getElementById(`review-text-${workerId}`);
+      if (reviewInput) {
+        reviewInput.value = '';
+      }
+      
+      // Refresh workers data
+      console.log('🔄 Refreshing workers...');
+      await fetchWorkersFromSQL();
+      
+      // Refresh profile
+      const worker = allWorkersData.find(w => w.id === parseInt(workerId));
+      if (worker) {
+        console.log('✅ Refreshing profile for:', worker.name);
+        displayWorkerProfile(worker);
+      }
+      
+    } else {
+      console.error('❌ Server error:', data.message);
+      alert('❌ ' + (data.message || 'Rating submission failed'));
+      
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '⭐ Submit Rating';
+      }
+    }
+  } catch (error) {
+    console.error('❌ Rating submission error:', error);
+    console.error('Error stack:', error.stack);
+    alert('❌ Error: ' + error.message);
+    
+    const submitBtn = document.getElementById(`submit-rating-btn-${workerId}`);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '⭐ Submit Rating';
+    }
+  }
+}
+
 
 
 function contactWorker(workerId) {
