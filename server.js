@@ -15,26 +15,24 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static('public'));
 
-// Database connection pool
-const pool = mysql.createPool({
-  host: '127.0.0.1',
-  port: 3306,
-  user: 'root',
-  password: 'PUNEE13@work',
-  database: 'skillbridge',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
 
-pool.getConnection()
-  .then((connection) => {
-    console.log('✅ Connected to MySQL database successfully');
-    connection.release();
-  })
-  .catch((err) => {
-    console.error('❌ Database connection failed:', err);
-  });
+
+
+
+
+const http = require('http');
+const socketIo = require('socket.io');
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 // ============= AUTHENTICATION MIDDLEWARE =============
 
@@ -57,6 +55,163 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+
+// Get current user profile
+app.get('/api/users/me', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const connection = await pool.getConnection();
+    const [rows] = await connection.query(
+      `SELECT u.id, u.email, u.phone, u.user_type, w.name as worker_name
+       FROM users u
+       LEFT JOIN workers w ON w.user_id = u.id
+       WHERE u.id = ?`,
+      [userId]
+    );
+    connection.release();
+
+    if (!rows || rows.length === 0) {
+      return res.json({ success: false, message: 'User not found' });
+    }
+
+    const user = rows[0];
+    res.json({ success: true, data: { id: user.id, email: user.email, phone: user.phone, user_type: user.user_type, name: user.worker_name || null } });
+  } catch (error) {
+    console.error('❌ Get current user error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Get worker's confirmed services/bookings (for Services view)
+app.get('/api/bookings/worker/services', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const connection = await pool.getConnection();
+
+    // Find worker id
+    const [workerData] = await connection.query('SELECT id FROM workers WHERE user_id = ?', [userId]);
+    if (!workerData || workerData.length === 0) {
+      connection.release();
+      return res.json({ success: true, data: [] });
+    }
+    const workerId = workerData[0].id;
+
+    const [bookings] = await connection.query(
+      `SELECT b.*, u.email as customer_email, u.phone as customer_phone, u.id as customer_id
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       WHERE b.worker_id = ? AND b.status = 'confirmed'
+       ORDER BY b.booking_date DESC, b.start_time DESC`,
+      [workerId]
+    );
+
+    connection.release();
+    res.json({ success: true, data: bookings });
+  } catch (error) {
+    console.error('❌ Get worker services error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Admin stats - requires user to be admin
+app.get('/api/admin/stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const connection = await pool.getConnection();
+
+    // Check admin
+    const [usersRows] = await connection.query('SELECT user_type FROM users WHERE id = ?', [userId]);
+    if (!usersRows || usersRows.length === 0 || usersRows[0].user_type !== 'admin') {
+      connection.release();
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    const stats = {};
+    const [[{count: usersCount}]] = await connection.query('SELECT COUNT(*) as count FROM users');
+    const [[{count: workersCount}]] = await connection.query('SELECT COUNT(*) as count FROM workers');
+    const [[{count: bookingsCount}]] = await connection.query('SELECT COUNT(*) as count FROM bookings');
+    const [[{pending: pendingCount}]] = await connection.query("SELECT SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending FROM bookings");
+    const [[{confirmed: confirmedCount}]] = await connection.query("SELECT SUM(CASE WHEN status='confirmed' THEN 1 ELSE 0 END) as confirmed FROM bookings");
+    const [[{avgRating}]] = await connection.query('SELECT AVG(rating) as avgRating FROM workers');
+    const [[{count: certCount}]] = await connection.query('SELECT COUNT(*) as count FROM certificates');
+
+    connection.release();
+
+    stats.users = usersCount || 0;
+    stats.workers = workersCount || 0;
+    stats.bookings_total = bookingsCount || 0;
+    stats.bookings_pending = pendingCount || 0;
+    stats.bookings_confirmed = confirmedCount || 0;
+    stats.avg_rating = parseFloat(avgRating) || 0;
+    stats.certificates = certCount || 0;
+
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('❌ Admin stats error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Store active users
+const activeUsers = new Map();
+
+// Socket.io connection
+io.on('connection', (socket) => {
+  console.log('✅ User connected:', socket.id);
+
+  // User joins with their ID
+  socket.on('join', (userId) => {
+    activeUsers.set(userId, socket.id);
+    console.log('User joined:', userId);
+  });
+
+  // Send message
+  socket.on('send_message', (data) => {
+    const { to, from, message, timestamp } = data;
+    const recipientSocketId = activeUsers.get(to);
+    
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('receive_message', {
+        from,
+        message,
+        timestamp
+      });
+      console.log('Message sent:', from, '→', to);
+    }
+  });
+
+  // User disconnect
+  socket.on('disconnect', () => {
+    for (let [userId, socketId] of activeUsers.entries()) {
+      if (socketId === socket.id) {
+        activeUsers.delete(userId);
+        console.log('User disconnected:', userId);
+        break;
+      }
+    }
+  });
+});
+
+// Database connection pool
+const pool = mysql.createPool({
+  host: '127.0.0.1',
+  port: 3306,
+  user: 'root',
+  password: 'PUNEE13@work',
+  database: 'skillbridge',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+
+pool.getConnection()
+  .then((connection) => {
+    console.log('✅ Connected to MySQL database successfully');
+    connection.release();
+  })
+  .catch((err) => {
+    console.error('❌ Database connection failed:', err);
+  });
 
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -472,6 +627,46 @@ app.get('/api/workers', async (req, res) => {
   }
 });
 
+// ============= RECOMMENDATIONS (Lightweight ML-like scorer) =============
+// Simple, explainable recommendation endpoint that ranks workers
+// by matching occupation, location, rating and review counts.
+// You can later replace this with a proper ML model or collaborative filtering.
+app.get('/api/recommendations', async (req, res) => {
+  try {
+    const { occupation, location, min_rating } = req.query;
+
+    const connection = await pool.getConnection();
+
+    // Basic scoring: occupation match (5), location match (3), rating (x2), reviews_count contribution
+    // Use COALESCE to avoid NULL issues
+    const [workers] = await connection.query(
+      `SELECT w.*, 
+         (CASE WHEN w.occupation = ? THEN 5 ELSE 0 END) +
+         (CASE WHEN w.location = ? THEN 3 ELSE 0 END) +
+         (COALESCE(w.rating,0) * 2) +
+         (COALESCE(w.reviews_count,0) / 10) AS score
+       FROM workers w
+       ORDER BY score DESC, w.rating DESC, w.reviews_count DESC
+       LIMIT 50`,
+      [occupation || '', location || '']
+    );
+
+    connection.release();
+
+    // Optionally filter by min_rating on the server side
+    let results = workers;
+    if (min_rating) {
+      const mr = parseFloat(min_rating) || 0;
+      results = results.filter(w => (parseFloat(w.rating) || 0) >= mr);
+    }
+
+    res.json({ success: true, data: results });
+  } catch (error) {
+    console.error('❌ Recommendations error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
 // GET SINGLE WORKER
 app.get('/api/workers/:id', async (req, res) => {
   try {
@@ -596,6 +791,391 @@ app.post('/api/certificates', authenticateToken, upload.single('certificate_file
   }
 });
 
+// ============= MESSAGING ROUTES =============
+
+// Send message
+app.post('/api/messages', authenticateToken, async (req, res) => {
+  try {
+    const { receiver_id, message } = req.body;
+    const sender_id = req.user.id;
+
+    if (!receiver_id || !message) {
+      return res.json({ success: false, message: 'Receiver ID and message required' });
+    }
+
+    const connection = await pool.getConnection();
+    const [result] = await connection.query(
+      'INSERT INTO messages (sender_id, receiver_id, message, created_at) VALUES (?, ?, ?, NOW())',
+      [sender_id, receiver_id, message]
+    );
+    connection.release();
+
+    res.json({
+      success: true,
+      message: 'Message sent',
+      data: { id: result.insertId }
+    });
+  } catch (error) {
+    console.error('❌ Send message error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Get conversation
+app.get('/api/messages/:userId', authenticateToken, async (req, res) => {
+  try {
+    const currentUserId = req.user.id;
+    const otherUserId = req.params.userId;
+
+    const connection = await pool.getConnection();
+    const [messages] = await connection.query(
+      `SELECT * FROM messages 
+       WHERE (sender_id = ? AND receiver_id = ?) 
+          OR (sender_id = ? AND receiver_id = ?)
+       ORDER BY created_at ASC`,
+      [currentUserId, otherUserId, otherUserId, currentUserId]
+    );
+    connection.release();
+
+    res.json({ success: true, data: messages });
+  } catch (error) {
+    console.error('❌ Get messages error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Get conversations list
+app.get('/api/conversations', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const connection = await pool.getConnection();
+    
+    const [conversations] = await connection.query(
+      `SELECT 
+        CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END as user_id,
+        MAX(created_at) as last_message_time
+      FROM messages
+      WHERE sender_id = ? OR receiver_id = ?
+      GROUP BY user_id
+      ORDER BY last_message_time DESC`,
+      [userId, userId, userId]
+    );
+
+    let conversationList = [];
+    for (let conv of conversations) {
+      const [user] = await connection.query('SELECT email FROM users WHERE id = ?', [conv.user_id]);
+      if (user.length > 0) {
+        conversationList.push({
+          user_id: conv.user_id,
+          user_email: user[0].email,
+          last_message_time: conv.last_message_time
+        });
+      }
+    }
+
+    connection.release();
+    res.json({ success: true, data: conversationList });
+  } catch (error) {
+    console.error('❌ Get conversations error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+
+
+// ============= BOOKING ROUTES =============
+
+// Create booking
+// ============= BOOKING ROUTES - COMPLETE WORKFLOW =============
+
+// Create booking (customer books worker)
+app.post('/api/bookings', authenticateToken, async (req, res) => {
+  try {
+    const { worker_id, booking_date, start_time, end_time, service_description, total_price } = req.body;
+    const user_id = req.user.id;
+
+    console.log('📅 Creating booking:', { user_id, worker_id, booking_date });
+
+    if (!worker_id || !booking_date || !start_time || !end_time) {
+      return res.json({ success: false, message: 'Missing required fields' });
+    }
+
+    const connection = await pool.getConnection();
+    
+    // Check if slot is available
+    const [conflicts] = await connection.query(
+      `SELECT id FROM bookings 
+       WHERE worker_id = ? AND booking_date = ? 
+       AND status IN ('pending', 'confirmed')
+       AND ((start_time < ? AND end_time > ?)
+            OR (start_time < ? AND end_time > ?))`,
+      [worker_id, booking_date, end_time, start_time, end_time, start_time]
+    );
+
+    if (conflicts.length > 0) {
+      connection.release();
+      return res.json({ success: false, message: 'Time slot already booked' });
+    }
+
+    const [result] = await connection.query(
+      `INSERT INTO bookings (user_id, worker_id, booking_date, start_time, end_time, service_description, total_price, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [user_id, worker_id, booking_date, start_time, end_time, service_description || '', total_price || 0]
+    );
+    
+    connection.release();
+
+    console.log('✅ Booking created:', result.insertId);
+
+    res.json({
+      success: true,
+      message: 'Booking request sent to worker',
+      data: { id: result.insertId }
+    });
+  } catch (error) {
+    console.error('❌ Booking error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Get customer's bookings (what customer booked)
+app.get('/api/bookings/customer', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const connection = await pool.getConnection();
+    const [bookings] = await connection.query(
+      `SELECT b.*, w.name as worker_name, w.occupation, w.phone as worker_phone, w.email as worker_email, w.user_id as worker_user_id
+       FROM bookings b
+       JOIN workers w ON b.worker_id = w.id
+       WHERE b.user_id = ?
+       ORDER BY b.booking_date DESC, b.start_time DESC`,
+      [userId]
+    );
+    connection.release();
+
+    console.log('✅ Customer bookings found:', bookings.length);
+
+    res.json({ success: true, data: bookings });
+  } catch (error) {
+    console.error('❌ Get customer bookings error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Get worker's booking requests (bookings for this worker)
+// Get worker's booking requests (bookings for this worker)
+// Get worker's booking requests (bookings for this worker)
+// Get worker's booking requests (bookings for this worker)
+app.get('/api/bookings/worker', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log('👷 Fetching bookings for user:', userId);
+
+    const connection = await pool.getConnection();
+    
+    // Step 1: Get worker_id for this user
+    const [workerData] = await connection.query(
+      'SELECT id FROM workers WHERE user_id = ?',
+      [userId]
+    );
+
+    if (!workerData || workerData.length === 0) {
+      console.log('ℹ️ No worker profile for user:', userId);
+      connection.release();
+      return res.json({ success: true, data: [] });
+    }
+
+    const workerId = workerData[0].id;
+    console.log('✅ Found worker_id:', workerId);
+
+    // Step 2: Get all bookings where worker_id matches
+    const [bookings] = await connection.query(
+      `SELECT 
+        b.id,
+        b.user_id,
+        b.worker_id,
+        b.booking_date,
+        b.start_time,
+        b.end_time,
+        b.status,
+        b.service_description,
+        b.total_price,
+        b.created_at,
+        u.email as customer_email,
+        u.phone as customer_phone,
+        COALESCE(w.name, u.email) as customer_name
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       LEFT JOIN workers w ON u.id = w.user_id
+       WHERE b.worker_id = ?
+       ORDER BY b.created_at DESC, b.booking_date DESC, b.start_time DESC`,
+      [workerId]
+    );
+
+    connection.release();
+
+    console.log('✅ Worker booking requests found:', bookings.length);
+
+    res.json({ 
+      success: true, 
+      data: bookings,
+      worker_id: workerId 
+    });
+
+  } catch (error) {
+    console.error('❌ Get worker bookings error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+
+
+
+
+// Update booking status (worker accepts/rejects)
+app.patch('/api/bookings/:id/status', authenticateToken, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    console.log('📝 Updating booking status:', { bookingId, status, userId });
+
+    if (!['confirmed', 'rejected', 'completed', 'cancelled'].includes(status)) {
+      return res.json({ success: false, message: 'Invalid status' });
+    }
+
+    const connection = await pool.getConnection();
+
+    // Get booking details
+    const [booking] = await connection.query(
+      `SELECT b.*, w.user_id as worker_user_id 
+       FROM bookings b
+       JOIN workers w ON b.worker_id = w.id
+       WHERE b.id = ?`,
+      [bookingId]
+    );
+
+    if (booking.length === 0) {
+      connection.release();
+      return res.json({ success: false, message: 'Booking not found' });
+    }
+
+    // Verify user is the worker OR the customer (for cancel)
+    const bookingData = booking[0];
+    console.log('🔍 Booking data:', { bookingId, bookingUserId: bookingData.user_id, workerUserId: bookingData.worker_user_id, currentUserId: userId, status });
+    
+    if (status === 'cancelled' && bookingData.user_id !== userId) {
+      connection.release();
+      console.log('❌ Unauthorized - customer mismatch');
+      return res.json({ success: false, message: 'Unauthorized - Only customer can cancel' });
+    }
+    
+    if ((status === 'confirmed' || status === 'rejected') && bookingData.worker_user_id !== userId) {
+      connection.release();
+      console.log('❌ Unauthorized - worker mismatch');
+      return res.json({ success: false, message: 'Unauthorized - Only worker can accept/reject' });
+    }
+
+    // Update status
+    await connection.query(
+      'UPDATE bookings SET status = ? WHERE id = ?',
+      [status, bookingId]
+    );
+
+    connection.release();
+
+    console.log('✅ Booking status updated:', status);
+
+    res.json({ 
+      success: true, 
+      message: 'Booking ' + status,
+      data: { id: bookingId, status: status }
+    });
+  } catch (error) {
+    console.error('❌ Update booking error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Get booking details
+app.get('/api/bookings/:id', authenticateToken, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    const connection = await pool.getConnection();
+    const [bookings] = await connection.query(
+      `SELECT b.*, w.name as worker_name, w.occupation, w.phone as worker_phone, w.email as worker_email,
+              u.email as customer_email, u.phone as customer_phone
+       FROM bookings b
+       JOIN workers w ON b.worker_id = w.id
+       JOIN users u ON b.user_id = u.id
+       WHERE b.id = ?`,
+      [bookingId]
+    );
+
+    connection.release();
+
+    if (bookings.length === 0) {
+      return res.json({ success: false, message: 'Booking not found' });
+    }
+
+    res.json({ success: true, data: bookings[0] });
+  } catch (error) {
+    console.error('❌ Get booking error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+
+// Get user bookings
+app.get('/api/bookings/user', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const connection = await pool.getConnection();
+    const [bookings] = await connection.query(
+      `SELECT b.*, w.name as worker_name, w.occupation, w.phone as worker_phone
+       FROM bookings b
+       JOIN workers w ON b.worker_id = w.id
+       WHERE b.user_id = ?
+       ORDER BY b.booking_date DESC, b.start_time DESC`,
+      [userId]
+    );
+    connection.release();
+
+    res.json({ success: true, data: bookings });
+  } catch (error) {
+    console.error('❌ Get bookings error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Update booking status
+app.patch('/api/bookings/:id', authenticateToken, async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const { status } = req.body;
+
+    if (!['confirmed', 'completed', 'cancelled'].includes(status)) {
+      return res.json({ success: false, message: 'Invalid status' });
+    }
+
+    const connection = await pool.getConnection();
+    await connection.query(
+      'UPDATE bookings SET status = ? WHERE id = ?',
+      [status, bookingId]
+    );
+    connection.release();
+
+    res.json({ success: true, message: 'Booking updated' });
+  } catch (error) {
+    console.error('❌ Update booking error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
 
 // Get worker's certificates
 app.get('/api/certificates/:workerId', async (req, res) => {
@@ -713,13 +1293,19 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
+// Replace this:
+// app.listen(PORT, () => { ... });
+
+// With this:
+server.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
 ║   🚀 SkillBridge Server Running        ║
 ║   📡 http://localhost:${PORT}            ║
 ║   🗄️  MySQL Connected                  ║
 ║   🔑 JWT Authentication Ready          ║
+║   💬 Socket.io Real-time Chat Ready    ║
 ╚════════════════════════════════════════╝
   `);
 });
+

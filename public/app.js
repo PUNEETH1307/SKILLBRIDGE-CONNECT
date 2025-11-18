@@ -84,9 +84,122 @@ function isLoggedIn() {
 
 function updateUIForLoggedInUser() {
   const loginBtn = document.getElementById('login-btn');
-  if (loginBtn && isLoggedIn()) {
-    loginBtn.textContent = 'Logout';
-    loginBtn.onclick = handleLogout;
+  if (!loginBtn) return;
+
+  if (!isLoggedIn()) {
+    loginBtn.textContent = 'Login';
+    loginBtn.onclick = () => showModal('login-modal');
+    // hide admin link if visible
+    const adminLink = document.getElementById('admin-link'); if (adminLink) adminLink.style.display = 'none';
+    return;
+  }
+
+  // Fetch current user info and update button to show profile
+  fetchCurrentUser().then(user => {
+    if (!user) {
+      loginBtn.textContent = 'Account';
+      loginBtn.onclick = () => showSection('user-profile');
+      return;
+    }
+
+    const displayName = user.name || user.email;
+    loginBtn.textContent = displayName;
+    loginBtn.onclick = () => { showSection('user-profile'); populateUserProfile(user); };
+
+    // Show admin link for admin users
+    const adminLink = document.getElementById('admin-link');
+    if (adminLink) adminLink.style.display = (user.user_type === 'admin') ? 'inline-block' : 'none';
+  }).catch(err => {
+    console.error('Error fetching user for UI update:', err);
+  });
+}
+
+// Fetch current user profile from server
+async function fetchCurrentUser() {
+  try {
+    const resp = await fetch(`${API_BASE_URL}/users/me`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } });
+    const data = await resp.json();
+    if (data.success) return data.data;
+    return null;
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    return null;
+  }
+}
+
+function populateUserProfile(user) {
+  showSection('user-profile');
+  document.getElementById('profile-name').textContent = user.name || '-';
+  document.getElementById('profile-email').textContent = user.email || '-';
+  document.getElementById('profile-role').textContent = user.user_type || '-';
+
+  const servicesBtn = document.getElementById('profile-services-btn');
+  if (servicesBtn) servicesBtn.style.display = (user.user_type === 'worker') ? 'inline-block' : 'none';
+
+  const logoutBtn = document.getElementById('profile-logout');
+  if (logoutBtn) logoutBtn.onclick = handleLogout;
+}
+
+// Load worker's confirmed services
+async function loadWorkerServices() {
+  try {
+    const resp = await fetch(`${API_BASE_URL}/bookings/worker/services`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } });
+    const data = await resp.json();
+    const container = document.getElementById('worker-services-list');
+    if (!container) return;
+    if (!data.success || !Array.isArray(data.data) || data.data.length === 0) {
+      container.innerHTML = '<p style="color:#999;">No confirmed services yet.</p>';
+      return;
+    }
+
+    let html = '';
+    data.data.forEach(b => {
+      html += `
+        <div style="background:white;padding:15px;border-radius:8px;border-left:5px solid #2196F3;">
+          <h4 style="margin:0;">Customer: ${escapeHtml(b.customer_email)}</h4>
+          <p style="margin:6px 0;">Date: ${new Date(b.booking_date).toLocaleDateString()} | ${b.start_time} - ${b.end_time}</p>
+          <p style="margin:6px 0;">Price: ₹${b.total_price || 0}</p>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  } catch (error) {
+    console.error('Error loading worker services:', error);
+  }
+}
+
+// Admin stats loader
+async function loadAdminStats() {
+  try {
+    const resp = await fetch(`${API_BASE_URL}/admin/stats`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } });
+    const data = await resp.json();
+    const containerId = 'admin-stats-container';
+    let container = document.getElementById(containerId);
+    if (!container) {
+      // create container in admin-dashboard
+      const dash = document.getElementById('admin-dashboard');
+      if (!dash) return;
+      container = document.createElement('div'); container.id = containerId; dash.querySelector('.container').appendChild(container);
+    }
+    if (!data.success) {
+      container.innerHTML = `<p style="color:#f44336;">${escapeHtml(data.message || 'Error loading stats')}</p>`;
+      return;
+    }
+
+    const s = data.data;
+    container.innerHTML = `
+      <div class="admin-grid">
+        <div><strong>Users:</strong> ${s.users}</div>
+        <div><strong>Workers:</strong> ${s.workers}</div>
+        <div><strong>Bookings (total):</strong> ${s.bookings_total}</div>
+        <div><strong>Pending:</strong> ${s.bookings_pending}</div>
+        <div><strong>Confirmed:</strong> ${s.bookings_confirmed}</div>
+        <div><strong>Certificates:</strong> ${s.certificates}</div>
+        <div><strong>Average Rating:</strong> ${s.avg_rating.toFixed ? s.avg_rating.toFixed(2) : s.avg_rating}</div>
+      </div>
+    `;
+  } catch (error) {
+    console.error('Error loading admin stats:', error);
   }
 }
 
@@ -142,7 +255,9 @@ async function handleLogin(e) {
       
       console.log('✅ Login successful! Token:', authToken);
       alert('✅ Login successful!');
-      
+      // In handleLogin() after successful login, add:
+initializeChat();
+
       // Close modal
       closeModal('login-modal');
       
@@ -166,6 +281,7 @@ async function handleLogin(e) {
     alert('❌ Error: ' + error.message);
   }
 }
+
 
 
 async function handleSignup(e) {
@@ -747,7 +863,37 @@ ${/* Certificates Section */ ''}
             </button>
             <p style="font-size: 12px; margin: 10px 0 0 0; opacity: 0.9;">Response time: Usually within 1 hour</p>
           </div>
-          
+          <!-- BOOKING SECTION -->
+<div style="background: #e8f5e9; border: 2px solid #4CAF50; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
+  <h3 style="margin-top: 0; color: #333;">📅 Book Service</h3>
+  
+  <div style="text-align: left; margin: 15px 0;">
+    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Date:</label>
+    <input type="date" id="booking-date-${worker.id}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" min="${new Date().toISOString().split('T')[0]}">
+    
+    <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Start Time:</label>
+    <input type="time" id="booking-start-${worker.id}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+    
+    <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Duration (hours):</label>
+    <select id="booking-duration-${worker.id}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+      <option value="1">1 hour</option>
+      <option value="2">2 hours</option>
+      <option value="3">3 hours</option>
+      <option value="4">4 hours</option>
+      <option value="8">Full day (8 hours)</option>
+    </select>
+    
+    <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Service Details:</label>
+    <textarea id="booking-desc-${worker.id}" placeholder="Describe what you need..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; min-height: 60px;"></textarea>
+  </div>
+  
+  <button onclick="createBooking(${worker.id}, ${worker.hourly_rate})" style="width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+    📅 Book Now
+  </button>
+  
+  <p style="font-size: 11px; color: #666; margin: 10px 0 0 0;">Rate: ₹${worker.hourly_rate}/hour</p>
+</div>
+
           <!-- RATING SECTION -->
           <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px; text-align: center;">
             <h3 style="margin-top: 0; color: #333;">⭐ Rate This Worker</h3>
@@ -778,6 +924,14 @@ ${/* Certificates Section */ ''}
       </div>
     </div>
   `;
+  // If worker has a location string, try to initialize map
+  if (worker.location) {
+    try {
+      initMapForAddress(worker.location);
+    } catch (e) {
+      console.log('Map init error:', e);
+    }
+  }
   // Load certificates
 console.log('📄 Loading certificates for worker profile...');
 loadProfileCertificates(worker.id);
@@ -819,6 +973,111 @@ async function loadProfileCertificates(workerId) {
 
   console.log('✅ Profile displayed with rating section');
 }
+
+// ============= BOOKING SYSTEM =============
+
+async function createBooking(workerId, hourlyRate) {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    alert('❌ Please login to book services');
+    return;
+  }
+
+  const date = document.getElementById(`booking-date-${workerId}`)?.value;
+  const startTime = document.getElementById(`booking-start-${workerId}`)?.value;
+  const duration = parseInt(document.getElementById(`booking-duration-${workerId}`)?.value || 1);
+  const description = document.getElementById(`booking-desc-${workerId}`)?.value;
+
+  if (!date || !startTime) {
+    alert('❌ Please select date and time');
+    return;
+  }
+
+  // Calculate end time
+  const [hours, minutes] = startTime.split(':');
+  const endHours = (parseInt(hours) + duration) % 24;
+  const endTime = `${endHours.toString().padStart(2, '0')}:${minutes}`;
+
+  const totalPrice = hourlyRate * duration;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        worker_id: workerId,
+        booking_date: date,
+        start_time: startTime,
+        end_time: endTime,
+        service_description: description,
+        total_price: totalPrice
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert(`✅ Booking created successfully!\n\nTotal: ₹${totalPrice}\nDate: ${date}\nTime: ${startTime} - ${endTime}`);
+      
+      // Clear form
+      document.getElementById(`booking-date-${workerId}`).value = '';
+      document.getElementById(`booking-start-${workerId}`).value = '';
+      document.getElementById(`booking-desc-${workerId}`).value = '';
+    } else {
+      alert('❌ ' + data.message);
+    }
+  } catch (error) {
+    console.error('Booking error:', error);
+    alert('❌ Error: ' + error.message);
+  }
+}
+
+// Load user bookings
+async function loadMyBookings() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/bookings/user`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+    });
+    const data = await response.json();
+
+    const container = document.getElementById('my-bookings-list');
+    if (!container) return;
+
+    if (!data.success || data.data.length === 0) {
+      container.innerHTML = '<p style="color: #999;">No bookings yet</p>';
+      return;
+    }
+
+    let html = '';
+    data.data.forEach(booking => {
+      const statusColors = {
+        pending: '#ff9800',
+        confirmed: '#4CAF50',
+        completed: '#2196F3',
+        cancelled: '#f44336'
+      };
+
+      html += `
+        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid ${statusColors[booking.status]}; margin-bottom: 15px;">
+          <h4 style="margin: 0 0 10px 0;">${booking.worker_name} - ${booking.occupation}</h4>
+          <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date(booking.booking_date).toLocaleDateString()}</p>
+          <p style="margin: 5px 0;"><strong>Time:</strong> ${booking.start_time} - ${booking.end_time}</p>
+          <p style="margin: 5px 0;"><strong>Price:</strong> ₹${booking.total_price}</p>
+          <p style="margin: 5px 0;"><strong>Status:</strong> <span style="background: ${statusColors[booking.status]}; color: white; padding: 3px 10px; border-radius: 3px; font-size: 12px;">${booking.status.toUpperCase()}</span></p>
+          ${booking.service_description ? `<p style="margin: 10px 0 0 0; color: #666;">${booking.service_description}</p>` : ''}
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  } catch (error) {
+    console.error('Error loading bookings:', error);
+  }
+}
+
 
 // ============= CERTIFICATE FUNCTIONS =============
 async function uploadCertificate() {
@@ -2086,17 +2345,770 @@ function bindEvent(id, event, handler) {
     element.addEventListener(event, handler);
   }
 }
+// ============= REAL-TIME CHAT SYSTEM =============
+
+let socket = null;
+let currentChatUserId = null;
+
+// Initialize Socket.io
+function initializeChat() {
+  const token = localStorage.getItem('authToken');
+  if (!token) return;
+
+  socket = io('http://localhost:3000');
+  
+  const userId = localStorage.getItem('userId');
+  socket.emit('join', userId);
+
+  socket.on('receive_message', (data) => {
+    console.log('📥 Message received:', data);
+    if (currentChatUserId == data.from) {
+      displayMessage(data.message, 'received', data.timestamp);
+    }
+    loadConversations();
+  });
+
+  loadConversations();
+}
+
+// Load conversations list
+async function loadConversations() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/conversations`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+    });
+    const data = await response.json();
+
+    const list = document.getElementById('conversations-list');
+    if (!data.success || data.data.length === 0) {
+      list.innerHTML = '<p style="color: #999;">No conversations yet</p>';
+      return;
+    }
+
+    let html = '';
+    data.data.forEach(conv => {
+      html += `
+        <div onclick="openChat(${conv.user_id}, '${conv.user_email}')" style="padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; hover: background: #f5f5f5;">
+          <strong>${conv.user_email}</strong>
+          <br><small style="color: #999;">${new Date(conv.last_message_time).toLocaleString()}</small>
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+  } catch (error) {
+    console.error('Error loading conversations:', error);
+  }
+}
+// ============= COMPLETE BOOKING WORKFLOW =============
+
+let currentBookingId = null;
+let currentBookingData = null;
+
+// Load bookings for both customer and worker
+async function loadBookings() {
+  console.log('📅 Loading bookings...');
+  
+  try {
+    // ✅ Clear containers FIRST
+    const workerContainer = document.getElementById('worker-booking-requests');
+    const customerContainer = document.getElementById('customer-bookings');
+    
+    console.log('🔍 Container check:');
+    console.log('  - worker-booking-requests:', !!workerContainer);
+    console.log('  - customer-bookings:', !!customerContainer);
+    
+    if (workerContainer) workerContainer.innerHTML = '<p style="color: #999; grid-column: 1/-1;">⏳ Loading...</p>';
+    if (customerContainer) customerContainer.innerHTML = '<p style="color: #999; grid-column: 1/-1;">⏳ Loading...</p>';
+    
+    // Load customer bookings
+    await loadCustomerBookings();
+    
+    // Load worker booking requests
+    await loadWorkerBookingRequests();
+  } catch (error) {
+    console.error('❌ Error loading bookings:', error);
+  }
+}
+
+
+// Load bookings made by customer
+async function loadCustomerBookings() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/bookings/customer`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+    });
+    const data = await response.json();
+
+    const container = document.getElementById('customer-bookings');
+    
+    console.log('👥 Customer Bookings Response:');
+    console.log('  - Container found:', !!container);
+    console.log('  - Success:', data.success);
+    console.log('  - Bookings count:', data.data?.length);
+
+    if (!container) {
+      console.error('❌ Container NOT FOUND! Looking for id="customer-bookings"');
+      return;
+    }
+
+    if (!data.success || !Array.isArray(data.data) || data.data.length === 0) {
+      container.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No bookings made yet</p>';
+      return;
+    }
+
+    let html = '';
+    data.data.forEach(booking => {
+      const statusConfig = getStatusConfig(booking.status);
+      const bookingDate = new Date(booking.booking_date).toLocaleDateString();
+      const workerName = booking.worker_name || 'Unknown Worker';
+      const workerEmail = booking.worker_email || 'No email';
+
+      html += `
+        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 5px solid ${statusConfig.color}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+            <div style="flex: 1;">
+              <h4 style="margin: 0; color: #333;">${escapeHtml(workerName)} - ${escapeHtml(booking.occupation || 'Service')}</h4>
+              <p style="margin: 5px 0; color: #666; font-size: 14px;">📧 ${escapeHtml(workerEmail)}</p>
+            </div>
+            <span style="background: ${statusConfig.color}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+              ${statusConfig.label}
+            </span>
+          </div>
+          
+          <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <p style="margin: 5px 0; font-size: 14px;"><strong>📅 Date:</strong> ${bookingDate}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>⏰ Time:</strong> ${booking.start_time || 'N/A'} - ${booking.end_time || 'N/A'}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>💰 Price:</strong> ₹${booking.total_price || 0}</p>
+            ${booking.service_description ? `<p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>📝 Details:</strong> ${escapeHtml(booking.service_description)}</p>` : ''}
+          </div>
+          
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="viewBookingDetails(${booking.id}, 'customer')" style="flex: 1; min-width: 120px; padding: 10px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+              👁️ View Details
+            </button>
+            <button onclick="openChatWithWorker(${booking.worker_user_id}, '${escapeHtml(workerName)}')" style="flex: 1; min-width: 120px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+              💬 Chat
+            </button>
+            ${booking.status === 'pending' ? `<button onclick="cancelBooking(${booking.id})" style="flex: 1; min-width: 120px; padding: 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">❌ Cancel</button>` : ''}
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    console.log('✅ Customer bookings displayed:', data.data.length);
+  } catch (error) {
+    console.error('❌ Error loading customer bookings:', error);
+    const container = document.getElementById('customer-bookings');
+    if (container) {
+      container.innerHTML = '<p style="color: #f44336; text-align: center; padding: 20px;">Error loading bookings</p>';
+    }
+  }
+}
+
+
+// Load booking requests for worker
+// Load booking requests for worker
+async function loadWorkerBookingRequests() {
+  try {
+    console.log('👷 Loading worker booking requests...');
+    
+    const response = await fetch(`${API_BASE_URL}/bookings/worker`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+    });
+    const data = await response.json();
+
+    console.log('📥 Worker bookings response:', data);
+
+    const container = document.getElementById('worker-booking-requests');
+    if (!container) {
+      console.error('❌ worker-booking-requests container not found');
+      return;
+    }
+
+    if (!data.success || !data.data || data.data.length === 0) {
+      console.log('ℹ️ No worker booking requests');
+      container.innerHTML = '<p style="color: #999; grid-column: 1/-1;">No booking requests yet</p>';
+      return;
+    }
+
+    console.log('✅ Found', data.data.length, 'worker booking requests');
+
+    let html = '';
+    data.data.forEach(booking => {
+      const statusConfig = getStatusConfig(booking.status);
+      const bookingDate = new Date(booking.booking_date).toLocaleDateString();
+      const customerName = booking.customer_name || booking.customer_email || 'Customer';
+      
+      // Show action buttons only for pending bookings
+      const actionButtons = booking.status === 'pending' ? `
+        <button onclick="acceptBooking(${booking.id})" style="flex: 1; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+          ✅ Accept
+        </button>
+        <button onclick="rejectBooking(${booking.id})" style="flex: 1; padding: 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+          ❌ Reject
+        </button>
+      ` : '';
+
+      html += `
+        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 5px solid ${statusConfig.color}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+            <div style="flex: 1;">
+              <h4 style="margin: 0; color: #333;">🔔 Booking Request</h4>
+              <p style="margin: 5px 0; color: #666; font-size: 14px;">👤 ${escapeHtml(customerName)}</p>
+              <p style="margin: 5px 0; color: #666; font-size: 14px;">📧 ${escapeHtml(booking.customer_email)}</p>
+              <p style="margin: 5px 0; color: #666; font-size: 14px;">📱 ${booking.customer_phone || 'N/A'}</p>
+            </div>
+            <span style="background: ${statusConfig.color}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+              ${statusConfig.label}
+            </span>
+          </div>
+          
+          <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <p style="margin: 5px 0; font-size: 14px;"><strong>📅 Date:</strong> ${bookingDate}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>⏰ Time:</strong> ${booking.start_time} - ${booking.end_time}</p>
+            <p style="margin: 5px 0; font-size: 14px;"><strong>💰 Price:</strong> ₹${booking.total_price}</p>
+            ${booking.service_description ? `<p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>📝 Details:</strong> ${escapeHtml(booking.service_description)}</p>` : ''}
+          </div>
+          
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="viewBookingDetails(${booking.id}, 'worker')" style="flex: 1; min-width: 120px; padding: 10px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+              👁️ View Details
+            </button>
+            <button onclick="openChatWithCustomer(${booking.user_id}, '${escapeHtml(customerName)}')" style="flex: 1; min-width: 120px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+              💬 Chat
+            </button>
+            ${actionButtons}
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    console.log('✅ Worker booking requests displayed:', data.data.length);
+
+  } catch (error) {
+    console.error('❌ Error loading worker booking requests:', error);
+    const container = document.getElementById('worker-booking-requests');
+    if (container) {
+      container.innerHTML = '<p style="color: #f44336;">Error loading requests</p>';
+    }
+  }
+}
+
+
+// Get status config (color and label)
+function getStatusConfig(status) {
+  const configs = {
+    'pending': { color: '#ff9800', label: '⏳ Pending' },
+    'confirmed': { color: '#4CAF50', label: '✅ Confirmed' },
+    'rejected': { color: '#f44336', label: '❌ Rejected' },
+    'completed': { color: '#2196F3', label: '✓ Completed' },
+    'cancelled': { color: '#9E9E9E', label: '⊘ Cancelled' }
+  };
+  return configs[status] || configs['pending'];
+}
+
+// View booking details
+async function viewBookingDetails(bookingId, userType) {
+  console.log('👁️ Viewing booking details:', bookingId);
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+    });
+    const data = await response.json();
+
+    if (!data.success) {
+      alert('Error loading booking details');
+      return;
+    }
+
+    currentBookingId = bookingId;
+    currentBookingData = data.data;
+
+    const booking = data.data;
+    const bookingDate = new Date(booking.booking_date).toLocaleDateString();
+    const statusConfig = getStatusConfig(booking.status);
+
+    let detailsHtml = `
+      <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin-top: 0;">Booking Information</h4>
+        
+        <p style="margin: 10px 0;"><strong>📅 Date:</strong> ${bookingDate}</p>
+        <p style="margin: 10px 0;"><strong>⏰ Time:</strong> ${booking.start_time} - ${booking.end_time}</p>
+        <p style="margin: 10px 0;"><strong>💰 Total Price:</strong> ₹${booking.total_price}</p>
+        <p style="margin: 10px 0;"><strong>Status:</strong> <span style="background: ${statusConfig.color}; color: white; padding: 3px 10px; border-radius: 3px;">${statusConfig.label}</span></p>
+        
+        ${booking.service_description ? `<p style="margin: 10px 0;"><strong>📝 Service Details:</strong> ${booking.service_description}</p>` : ''}
+        
+        <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+        
+        <h4>Worker Information</h4>
+        <p style="margin: 10px 0;"><strong>Name:</strong> ${booking.worker_name}</p>
+        <p style="margin: 10px 0;"><strong>Email:</strong> ${booking.worker_email}</p>
+        <p style="margin: 10px 0;"><strong>Phone:</strong> ${booking.worker_phone}</p>
+        
+        <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+        
+        <h4>Customer Information</h4>
+        <p style="margin: 10px 0;"><strong>Email:</strong> ${booking.customer_email}</p>
+        <p style="margin: 10px 0;"><strong>Phone:</strong> ${booking.customer_phone}</p>
+      </div>
+    `;
+
+    document.getElementById('modal-booking-details').innerHTML = detailsHtml;
+    document.getElementById('modal-title').textContent = `Booking #${bookingId}`;
+
+    // Show action buttons only for worker viewing pending bookings
+    const actionsDiv = document.getElementById('modal-worker-actions');
+    if (userType === 'worker' && booking.status === 'pending') {
+      actionsDiv.innerHTML = `
+        <button onclick="updateBookingStatus(${bookingId}, 'confirmed')" style="width: 48%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+          ✅ Accept
+        </button>
+        <button onclick="updateBookingStatus(${bookingId}, 'rejected')" style="width: 48%; padding: 12px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
+          ❌ Reject
+        </button>
+      `;
+    } else {
+      actionsDiv.innerHTML = '';
+    }
+
+    showModal('booking-details-modal');
+  } catch (error) {
+    console.error('Error viewing booking details:', error);
+    alert('Error loading booking details');
+  }
+}
+
+// Initialize Google Maps for a given address string (if Maps API loaded)
+function initMapForAddress(address) {
+  try {
+    if (!address || typeof google === 'undefined' || !google.maps) {
+      console.log('Google Maps not available or no address provided');
+      return;
+    }
+
+    const mapDiv = document.getElementById('profile-map');
+    if (!mapDiv) return;
+    mapDiv.style.display = 'block';
+
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: address }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const loc = results[0].geometry.location;
+        const map = new google.maps.Map(mapDiv, { center: loc, zoom: 13 });
+        new google.maps.Marker({ position: loc, map: map });
+      } else {
+        console.warn('Geocode failed:', status);
+      }
+    });
+  } catch (e) {
+    console.error('initMapForAddress error:', e);
+  }
+}
+
+// ============= ACCEPT/REJECT BOOKING =============
+
+// Cancel booking (customer cancels)
+async function cancelBooking(bookingId) {
+  console.log('❌ Cancelling booking:', bookingId);
+  
+  const confirmed = confirm('Are you sure you want to cancel this booking?');
+  if (!confirmed) return;
+  
+  try {
+    const authToken = localStorage.getItem('authToken');
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ status: 'cancelled' })
+    });
+
+    console.log('📤 Response status:', response.status);
+    const data = await response.json();
+    console.log('📥 Response data:', data);
+
+    if (data.success) {
+      console.log('✅ Booking cancelled successfully');
+      alert('✅ Booking Cancelled');
+      loadBookings(); // Reload to show updated status
+    } else {
+      console.error('❌ Server error:', data.message);
+      alert('❌ Error: ' + data.message);
+    }
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    alert('❌ Error cancelling booking: ' + error.message);
+  }
+}
+
+// Accept booking (worker accepts)
+async function acceptBooking(bookingId) {
+  console.log('✅ Accepting booking:', bookingId);
+  
+  const confirmed = confirm('Are you sure you want to accept this booking?');
+  if (!confirmed) return;
+  
+  try {
+    const authToken = localStorage.getItem('authToken');
+    console.log('🔐 Using token:', authToken ? 'Present' : 'Missing');
+    
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ status: 'confirmed' })
+    });
+
+    console.log('📤 Response status:', response.status);
+    const data = await response.json();
+    console.log('📥 Response data:', data);
+
+    if (data.success) {
+      console.log('✅ Booking accepted successfully');
+      alert('✅ Booking Accepted! You can now chat with the customer.');
+      loadBookings(); // Reload to show updated status
+    } else {
+      console.error('❌ Server error:', data.message);
+      alert('❌ Error: ' + data.message);
+    }
+  } catch (error) {
+    console.error('Error accepting booking:', error);
+    alert('❌ Error accepting booking: ' + error.message);
+  }
+}
+
+// Reject booking (worker rejects)
+async function rejectBooking(bookingId) {
+  console.log('❌ Rejecting booking:', bookingId);
+  
+  const confirmed = confirm('Are you sure you want to reject this booking?');
+  if (!confirmed) return;
+  
+  try {
+    const authToken = localStorage.getItem('authToken');
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ status: 'rejected' })
+    });
+
+    console.log('📤 Response status:', response.status);
+    const data = await response.json();
+    console.log('📥 Response data:', data);
+
+    if (data.success) {
+      console.log('❌ Booking rejected successfully');
+      alert('❌ Booking Rejected');
+      loadBookings(); // Reload to show updated status
+    } else {
+      console.error('❌ Server error:', data.message);
+      alert('❌ Error: ' + data.message);
+    }
+  } catch (error) {
+    console.error('Error rejecting booking:', error);
+    alert('❌ Error rejecting booking: ' + error.message);
+  }
+}
+
+// Update booking status
+async function updateBookingStatus(bookingId, newStatus) {
+  console.log('📝 Updating booking status:', newStatus);
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: JSON.stringify({ status: newStatus })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      const statusText = newStatus === 'confirmed' ? 'Accepted ✅' : 'Rejected ❌';
+      alert('Booking ' + statusText);
+      
+      closeModal('booking-details-modal');
+      loadBookings();
+    } else {
+      alert('❌ ' + data.message);
+    }
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    alert('❌ Error: ' + error.message);
+  }
+}
+
+// Open chat from booking (from details modal)
+function openChatFromBooking() {
+  if (!currentBookingData) return;
+  
+  // Determine if viewing as customer or worker
+  const currentUserId = parseInt(localStorage.getItem('userId'));
+  
+  if (currentBookingData.user_id === currentUserId) {
+    // Customer viewing, chat with worker
+    openChatWithWorker(currentBookingData.user_id, currentBookingData.worker_name);
+  } else {
+    // Worker viewing, chat with customer
+    openChatWithCustomer(currentBookingData.user_id, currentBookingData.customer_email);
+  }
+  
+  closeModal('booking-details-modal');
+}
+
+// Open chat with worker
+function openChatWithWorker(workerUserId, workerName) {
+  if (!socket) initializeChat();
+  
+  showSection('chat');
+  setTimeout(() => {
+    openChat(workerUserId, workerName);
+  }, 500);
+}
+
+// Open chat with customer
+function openChatWithCustomer(customerId, customerEmail) {
+  if (!socket) initializeChat();
+  
+  showSection('chat');
+  setTimeout(() => {
+    openChat(customerId, customerEmail);
+  }, 500);
+}
+
+// Create booking (updated)
+async function createBooking(workerId, hourlyRate) {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    alert('❌ Please login to book services');
+    showSection('login');
+    return;
+  }
+
+  const date = document.getElementById(`booking-date-${workerId}`)?.value;
+  const startTime = document.getElementById(`booking-start-${workerId}`)?.value;
+  const duration = parseInt(document.getElementById(`booking-duration-${workerId}`)?.value || 1);
+  const description = document.getElementById(`booking-desc-${workerId}`)?.value;
+
+  if (!date || !startTime) {
+    alert('❌ Please select date and time');
+    return;
+  }
+
+  // Calculate end time
+  const [hours, minutes] = startTime.split(':');
+  const endHours = (parseInt(hours) + duration) % 24;
+  const endTime = `${endHours.toString().padStart(2, '0')}:${minutes}`;
+
+  const totalPrice = hourlyRate * duration;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/bookings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        worker_id: workerId,
+        booking_date: date,
+        start_time: startTime,
+        end_time: endTime,
+        service_description: description,
+        total_price: totalPrice
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert(`✅ Booking request sent!\n\nWorker will review your request.\n\nTotal: ₹${totalPrice}`);
+      
+      // Clear form
+      document.getElementById(`booking-date-${workerId}`).value = '';
+      document.getElementById(`booking-start-${workerId}`).value = '';
+      document.getElementById(`booking-desc-${workerId}`).value = '';
+      
+      // Load bookings
+      loadBookings();
+    } else {
+      alert('❌ ' + data.message);
+    }
+  } catch (error) {
+    console.error('Booking error:', error);
+    alert('❌ Error: ' + error.message);
+  }
+}
+
+// Open chat with user
+async function openChat(userId, userName) {
+  currentChatUserId = userId;
+  document.getElementById('chat-user-name').textContent = userName;
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/messages/${userId}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+    });
+    const data = await response.json();
+
+    const messagesDiv = document.getElementById('chat-messages');
+    messagesDiv.innerHTML = '';
+
+    if (data.success && data.data.length > 0) {
+      data.data.forEach(msg => {
+        const isSent = msg.sender_id == localStorage.getItem('userId');
+        displayMessage(msg.message, isSent ? 'sent' : 'received', msg.created_at);
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+  } catch (error) {
+    console.error('Error loading messages:', error);
+  }
+}
+
+// Send message
+async function sendMessage() {
+  const input = document.getElementById('message-input');
+  const message = input.value.trim();
+
+  if (!message || !currentChatUserId) return;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: JSON.stringify({
+        receiver_id: currentChatUserId,
+        message: message
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      displayMessage(message, 'sent', new Date());
+      input.value = '';
+      
+      // Send via socket
+      socket.emit('send_message', {
+        to: currentChatUserId,
+        from: localStorage.getItem('userId'),
+        message: message,
+        timestamp: new Date()
+      });
+    }
+  } catch (error) {
+    console.error('Error sending message:', error);
+  }
+}
+// ============= INITIALIZE ON PAGE LOAD =============
+
+// Check if user is logged in and initialize
+document.addEventListener('DOMContentLoaded', function() {
+  const token = localStorage.getItem('authToken');
+  
+  if (token) {
+    console.log('✅ User logged in, initializing...');
+    
+    // Initialize chat
+    initializeChat();
+    
+    // Load bookings when page loads
+    loadBookings();
+  }
+});
+
+// Also reinitialize when showing sections
+
+function showSection(sectionId) {
+  console.log('🔄 Switching to section:', sectionId);
+  
+  // Hide all sections
+  const allSections = document.querySelectorAll('.section');
+  console.log('📋 Total sections found:', allSections.length);
+  allSections.forEach(s => s.classList.remove('active'));
+
+  // Show requested section
+  const section = document.getElementById(sectionId);
+  console.log('🔍 Section element found:', !!section);
+  
+  if (section) {
+    section.classList.add('active');
+    currentSection = sectionId;
+    console.log('✅ Section active class added, display should be: block');
+
+    // Load data if needed
+    if (sectionId === 'my-bookings') {
+      console.log('📅 Loading my bookings section...');
+      loadBookings();
+    }
+    else if (sectionId === 'chat') {
+      console.log('💬 Loading chat section...');
+      if (!socket) initializeChat();
+      loadConversations();
+    }
+  } else {
+    console.error('❌ Section not found:', sectionId);
+  }
+}
+
+
+// Display message in chat
+function displayMessage(message, type, timestamp) {
+  const messagesDiv = document.getElementById('chat-messages');
+  const align = type === 'sent' ? 'flex-end' : 'flex-start';
+  const bg = type === 'sent' ? '#2196F3' : '#e0e0e0';
+  const color = type === 'sent' ? 'white' : 'black';
+
+  const msgHtml = `
+    <div style="display: flex; justify-content: ${align}; margin-bottom: 10px;">
+      <div style="max-width: 70%; padding: 10px 15px; border-radius: 15px; background: ${bg}; color: ${color};">
+        <p style="margin: 0;">${escapeHtml(message)}</p>
+        <small style="opacity: 0.7; font-size: 10px;">${new Date(timestamp).toLocaleTimeString()}</small>
+      </div>
+    </div>
+  `;
+  
+  messagesDiv.innerHTML += msgHtml;
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// Update contactWorker function
+function contactWorker(workerId) {
+  // Get worker details
+  const worker = allWorkersData.find(w => w.id === workerId);
+  if (!worker) return;
+
+  // Open chat
+  showSection('chat');
+  initializeChat();
+  
+  // Find or create conversation
+  setTimeout(() => {
+    openChat(worker.user_id, worker.name);
+  }, 500);
+}
 
 // ========================================
 // NAVIGATION
 // ========================================
-
-function showSection(sectionId) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById(sectionId)?.classList.add('active');
-  currentSection = sectionId;
-  console.log('📄 Showing section:', sectionId);
-}
 
 function showModal(modalId) {
   document.getElementById(modalId)?.classList.remove('hidden');

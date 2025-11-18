@@ -7,41 +7,44 @@ USE skillbridge;
 -- ALTER TABLE workers ADD COLUMN rating DECIMAL(2,1) DEFAULT 0.0;
 -- ALTER TABLE workers ADD COLUMN total_reviews INT DEFAULT 0;
 CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(20),
-    password VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  phone VARCHAR(20),
+  password VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- Workers table for storing worker profiles
 CREATE TABLE IF NOT EXISTS workers (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    name VARCHAR(255) NOT NULL,
-    phone VARCHAR(20) NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    occupation VARCHAR(100) NOT NULL,
-    experience VARCHAR(20) NOT NULL,
-    specialties TEXT,
-    hourly_rate INT NOT NULL,
-    available_hours VARCHAR(50),
-    location VARCHAR(255) NOT NULL,
-    travel_radius VARCHAR(20),
-    work_areas TEXT,
-    description TEXT,
-    certifications TEXT,
-    verified BOOLEAN DEFAULT FALSE,
-    rating DECIMAL(3, 2) DEFAULT 0.0,
-    reviews_count INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  name VARCHAR(255) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  occupation VARCHAR(100) NOT NULL,
+  experience VARCHAR(20) NOT NULL,
+  specialties TEXT,
+  hourly_rate INT NOT NULL,
+  available_hours VARCHAR(50),
+  location VARCHAR(255) NOT NULL,
+  travel_radius VARCHAR(20),
+  work_areas TEXT,
+  description TEXT,
+  certifications TEXT,
+  verified BOOLEAN DEFAULT FALSE,
+  rating DECIMAL(3, 2) DEFAULT 0.0,
+  reviews_count INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 -- Create ratings table
 CREATE TABLE IF NOT EXISTS rating (
   id INT AUTO_INCREMENT PRIMARY KEY,
   worker_id INT NOT NULL,
   user_id INT NOT NULL,
-  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  rating INT NOT NULL CHECK (
+    rating >= 1
+    AND rating <= 5
+  ),
   review TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE CASCADE,
@@ -49,7 +52,6 @@ CREATE TABLE IF NOT EXISTS rating (
   UNIQUE KEY unique_user_worker (user_id, worker_id)
 );
 USE skillbridge;
-
 -- Create certificates table
 CREATE TABLE IF NOT EXISTS certificates (
   id INT AUTO_INCREMENT PRIMARY KEY,
@@ -62,20 +64,54 @@ CREATE TABLE IF NOT EXISTS certificates (
   uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE CASCADE
 );
-
+USE skillbridge;
+CREATE TABLE IF NOT EXISTS messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  sender_id INT NOT NULL,
+  receiver_id INT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_read BOOLEAN DEFAULT FALSE,
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+);
+-- CREATE INDEX idx_sender ON messages(sender_id);
+-- CREATE INDEX idx_receiver ON messages(receiver_id);
+USE skillbridge;
+CREATE TABLE IF NOT EXISTS bookings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  worker_id INT NOT NULL,
+  booking_date DATE NOT NULL,
+  start_time TIME NOT NULL,
+  end_time TIME NOT NULL,
+  status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending',
+  service_description TEXT,
+  total_price DECIMAL(10, 2),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE CASCADE
+);
+-- CREATE INDEX idx_booking_date ON bookings(booking_date);
+-- CREATE INDEX idx_booking_status ON bookings(status);
 -- Add certificate count column to workers if not exists
 -- ALTER TABLE workers ADD COLUMN  certificate_count INT DEFAULT 0;
-
-
 -- Update workers table to have rating and total_reviews columns
 -- ALTER TABLE workers 
 -- ADD COLUMN IF NOT EXISTS rating DECIMAL(2,1) DEFAULT 0.0,
 -- ADD COLUMN IF NOT EXISTS total_reviews INT DEFAULT 0;
-
 SELECT *
 FROM users;
 SELECT *
 FROM workers;
+select * 
+from certificates;
+select *
+from rating;
+select *
+from messages;
+select *
+from bookings;
 -- Create indexes for better performance
 -- CREATE INDEX idx_occupation ON workers(occupation);
 -- CREATE INDEX idx_location ON workers(location);

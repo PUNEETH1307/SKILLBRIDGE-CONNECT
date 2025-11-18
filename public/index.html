@@ -18,15 +18,89 @@
             <div class="nav-menu">
                 <a href="#home" class="nav-link active" id="home-link">Home</a>
                 <a href="#about" class="nav-link">About</a>
-                <a href="#services" class="nav-link">Services</a>
+                <a href="#services" class="nav-link" id="services-link" onclick="showSection('my-services'); loadWorkerServices();">Services</a>
+                <a href="#admin" class="nav-link" id="admin-link" style="display:none;" onclick="showSection('admin-dashboard'); loadAdminStats();">Admin</a>
+                <a href="#chat" class="nav-link" onclick="showSection('chat'); initializeChat();">Messages</a>
+                <a href="#my-bookings" class="nav-link" onclick="showSection('my-bookings'); loadBookings();">My Bookings</a>
                 <button class="btn btn--primary nav-btn" id="login-btn">Login</button>
             </div>
             <div class="nav-toggle" id="nav-toggle">
                 <i class="fas fa-bars"></i>
             </div>
         </div>
+       
+
     </nav>
 
+    
+<!-- MY BOOKINGS Section -->
+<section id="my-bookings" class="section">
+  <div class="container">
+    <h2 class="section-title">📅 My Bookings & Requests</h2>
+    
+    <div style="margin-bottom: 30px;">
+      <h3>🔔 Booking Requests I Received (As Worker)</h3>
+      <div id="worker-booking-requests" style="display: grid; gap: 15px;"></div>
+    </div>
+    
+    <div>
+      <h3>📋 Bookings I Made (As Customer)</h3>
+      <div id="customer-bookings" style="display: grid; gap: 15px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- USER PROFILE Section -->
+<section id="user-profile" class="section">
+    <div class="container">
+        <h2 class="section-title">Profile</h2>
+        <div id="profile-panel">
+            <p><strong>Name:</strong> <span id="profile-name">-</span></p>
+            <p><strong>Email:</strong> <span id="profile-email">-</span></p>
+            <p><strong>Role:</strong> <span id="profile-role">-</span></p>
+            <div style="margin-top: 15px; display:flex; gap:10px;">
+                <button class="btn btn--primary" id="profile-logout">Logout</button>
+                <button class="btn" id="profile-services-btn" style="display:none;" onclick="showSection('my-services'); loadWorkerServices();">My Services</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- MY SERVICES (Worker's confirmed bookings) -->
+<section id="my-services" class="section">
+    <div class="container">
+        <h2 class="section-title">My Services (Confirmed Bookings)</h2>
+        <div id="worker-services-list" style="display: grid; gap: 15px;"></div>
+    </div>
+</section>
+
+<!-- Admin Dashboard -->
+<section id="admin-dashboard" class="section">
+    <div class="container">
+        <h2 class="section-title">Admin Dashboard</h2>
+        <div id="admin-stats-container"></div>
+    </div>
+</section>
+
+<!-- BOOKING DETAILS Modal -->
+<div id="booking-details-modal" class="modal" style="display: none;">
+  <div class="modal-content" style="max-width: 600px;">
+    <span class="close" onclick="closeModal('booking-details-modal')" style="cursor: pointer; float: right; font-size: 28px; font-weight: bold;">&times;</span>
+    
+    <h2 id="modal-title">Booking Details</h2>
+    
+    <div id="modal-booking-details"></div>
+    
+    <div style="margin-top: 20px; display: flex; gap: 10px;">
+      <div id="modal-worker-actions" style="flex: 1;">
+        <!-- Accept/Reject buttons appear here for workers -->
+      </div>
+      <button onclick="openChatFromBooking()" style="flex: 1; padding: 12px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        💬 Send Message
+      </button>
+    </div>
+  </div>
+</div>
 
     <!-- Homepage Section -->
     <section id="home" class="section active">
@@ -97,6 +171,8 @@
             </div>
         </div>
     </section>
+    <!-- Chat Section -->
+
 
 
     <!-- Worker Registration Section -->
@@ -375,6 +451,7 @@
 
             <div id="profile-content" class="profile-content">
                 <!-- Profile content will be populated here -->
+                <div id="profile-map" style="height:300px; margin-top: 15px; display:none;"></div>
             </div>
         </div>
     </section>
@@ -524,8 +601,25 @@
             </div>
         </div>
     </div>
+    <!-- My Bookings Section -->
 
 
     <script src="app.js"></script>
+    <!-- Socket.io Client -->
+<script src="/socket.io/socket.io.js"></script>
+<!-- Google Maps (replace YOUR_API_KEY) -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"></script>
+<script>
+// Initialize chat and bookings on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const token = localStorage.getItem('authToken');
+  
+  if (token) {
+    console.log('✅ User logged in');
+    initializeChat();
+  }
+});
+</script>
+
 </body>
 </html>
