@@ -51,8 +51,59 @@ let authToken = localStorage.getItem('authToken');
 
 document.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 Initializing SkillBridge Connect...');
+  initializeTheme();
   initializeApp();
 });
+
+// ========================================
+// THEME MANAGEMENT
+// ========================================
+
+function initializeTheme() {
+  // Check for saved theme preference or default to system preference
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  setTheme(savedTheme);
+  setupThemeToggle();
+}
+
+function setTheme(theme) {
+  const html = document.documentElement;
+  const themeToggle = document.getElementById('theme-toggle');
+  
+  if (theme === 'dark') {
+    html.setAttribute('data-color-scheme', 'dark');
+    if (themeToggle) {
+      themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+      themeToggle.title = 'Switch to Light Mode';
+    }
+  } else {
+    html.setAttribute('data-color-scheme', 'light');
+    if (themeToggle) {
+      themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+      themeToggle.title = 'Switch to Dark Mode';
+    }
+  }
+  
+  localStorage.setItem('theme', theme);
+  console.log(`✨ Theme switched to: ${theme}`);
+}
+
+function setupThemeToggle() {
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = localStorage.getItem('theme') || 'light';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      setTheme(newTheme);
+    });
+  }
+}
+
+// ========================================
+// INITIALIZATION
+// ========================================
+// INITIALIZATION
+// ========================================
 
 function initializeApp() {
   try {
@@ -795,136 +846,130 @@ async function displayWorkerProfile(worker) {
   }
   
   profileContent.innerHTML = `
-    <div style="padding: 20px; background: white;">
-      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 8px; margin-bottom: 30px;">
-        <div style="display: flex; gap: 20px; align-items: flex-start;">
-          <div style="width: 120px; height: 120px; background: rgba(255,255,255,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 48px; font-weight: bold;">
+    <div class="profile-container">
+      <!-- Header Section -->
+      <div class="profile-header-section">
+        <div class="profile-header-content">
+          <div class="profile-avatar-box">
             ${worker.name.charAt(0).toUpperCase()}
           </div>
-          <div style="flex: 1;">
-            <h1 style="margin: 0; font-size: 28px;">${escapeHtml(worker.name)}</h1>
-            <p style="margin: 8px 0; font-size: 18px; opacity: 0.9;">${escapeHtml(worker.occupation)}</p>
-            <div style="display: flex; gap: 15px; margin-top: 12px; font-size: 14px;">
-              <span>⭐ ${worker.rating || 0}/5 (${worker.reviews_count || worker.total_reviews || 0} reviews)</span>
-              <span>💼 ${worker.experience} years</span>
-              <span>💰 ₹${worker.hourly_rate}/hr</span>
-              ${worker.verified ? '<span style="background: rgba(255,255,255,0.3); padding: 4px 10px; border-radius: 4px;">✓ Verified</span>' : ''}
+          <div class="profile-header-info">
+            <h1>${escapeHtml(worker.name)}</h1>
+            <p class="profile-header-occupation">${escapeHtml(worker.occupation)}</p>
+            <div class="profile-stats">
+              <div class="profile-stat-item">⭐ ${worker.rating || 0}/5 (${worker.reviews_count || worker.total_reviews || 0})</div>
+              <div class="profile-stat-item">💼 ${worker.experience}y experience</div>
+              <div class="profile-stat-item">💰 ₹${worker.hourly_rate}/hr</div>
+              ${worker.verified ? '<div class="profile-stat-item">✓ Verified</div>' : ''}
             </div>
           </div>
         </div>
       </div>
       
-      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
-        <div class="profile-main">
-          <div style="background: #999; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <h3 style="margin-top: 0; color: #333;">About</h3>
-            <p style="color: #666; line-height: 1.6;">${escapeHtml(worker.description || 'No description provided.')}</p>
+      <!-- Main Content Grid -->
+      <div class="profile-sections-wrapper">
+        <!-- Left Column: About, Skills, Services -->
+        <div>
+          <!-- About Section -->
+          <div class="profile-section-box">
+            <h3>📋 About</h3>
+            <p>${escapeHtml(worker.description || 'No description provided.')}</p>
           </div>
           
+          <!-- Skills & Specialties -->
           ${specialties.length > 0 ? `
-          <div style="background: #999; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <h3 style="margin-top: 0; color: #333;">Skills & Specialties</h3>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-              ${specialties.map(s => `<div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #2196F3; color: #333;">${escapeHtml(s)}</div>`).join('')}
+            <div class="profile-section-box">
+              <h3>🔧 Skills & Specialties</h3>
+              <div class="skills-specialties-grid">
+                ${specialties.map(s => `<div class="skill-specialty-item">${escapeHtml(s)}</div>`).join('')}
+              </div>
             </div>
-          </div>
           ` : ''}
           
+          <!-- Service Areas -->
           ${serviceAreas.length > 0 ? `
-          <div style="background: #999; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <h3 style="margin-top: 0; color: #333;">Service Areas</h3>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-              ${serviceAreas.map(a => `<div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #4CAF50; color: #333;">📍 ${escapeHtml(a)}</div>`).join('')}
+            <div class="profile-section-box">
+              <h3>📍 Service Areas</h3>
+              <div class="skills-specialties-grid">
+                ${serviceAreas.map(a => `<div class="service-area-item">📍 ${escapeHtml(a)}</div>`).join('')}
+              </div>
             </div>
-          </div>
           ` : ''}
           
-          ${worker.certifications ? `
-          <div style="background: #999; padding: 20px; border-radius: 8px;">
-            <h3 style="margin-top: 0; color: #333;">Certifications</h3>
-            <p style="color: #666;">${escapeHtml(worker.certifications)}</p>
+          <!-- Certificates -->
+          <div class="profile-section-box">
+            <h3>📄 Certificates</h3>
+            <div id="profile-certificates-${worker.id}" class="certificates-grid">Loading certificates...</div>
           </div>
-          ` : ''}
         </div>
-        // In displayWorkerProfile(), add this after the About section:
-
-${/* Certificates Section */ ''}
-<div id="certificates-section-${worker.id}" style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-  <h3 style="margin-top: 0; color: #333;">📄 Certificates</h3>
-  <div id="profile-certificates-${worker.id}">Loading certificates...</div>
-</div>
-
         
-        <div class="profile-sidebar">
-          <div style="background: #2196F3; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
-            <h3 style="margin-top: 0;">Contact Worker</h3>
-            <button style="width: 100%; padding: 12px; background: white; color: #2196F3; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin: 10px 0;" onclick="contactWorker(${worker.id})">
-              📞 Call Now
-            </button>
-            <p style="font-size: 12px; margin: 10px 0 0 0; opacity: 0.9;">Response time: Usually within 1 hour</p>
+        <!-- Right Column: Contact, Booking, Rating -->
+        <div>
+          <!-- Contact Box -->
+          <div class="profile-contact-box">
+            <h3>Contact Worker</h3>
+            <button onclick="contactWorker(${worker.id})">📞 Call Now</button>
+            <p class="profile-contact-note">Response time: Usually within 1 hour</p>
           </div>
-          <!-- BOOKING SECTION -->
-<div style="background: #e8f5e9; border: 2px solid #4CAF50; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
-  <h3 style="margin-top: 0; color: #333;">📅 Book Service</h3>
-  
-  <div style="text-align: left; margin: 15px 0;">
-    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Date:</label>
-    <input type="date" id="booking-date-${worker.id}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" min="${new Date().toISOString().split('T')[0]}">
-    
-    <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Start Time:</label>
-    <input type="time" id="booking-start-${worker.id}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-    
-    <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Duration (hours):</label>
-    <select id="booking-duration-${worker.id}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-      <option value="1">1 hour</option>
-      <option value="2">2 hours</option>
-      <option value="3">3 hours</option>
-      <option value="4">4 hours</option>
-      <option value="8">Full day (8 hours)</option>
-    </select>
-    
-    <label style="display: block; margin: 10px 0 5px 0; font-weight: bold;">Service Details:</label>
-    <textarea id="booking-desc-${worker.id}" placeholder="Describe what you need..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; min-height: 60px;"></textarea>
-  </div>
-  
-  <button onclick="createBooking(${worker.id}, ${worker.hourly_rate})" style="width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
-    📅 Book Now
-  </button>
-  
-  <p style="font-size: 11px; color: #666; margin: 10px 0 0 0;">Rate: ₹${worker.hourly_rate}/hour</p>
-</div>
-
-          <!-- RATING SECTION -->
-          <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 20px; border-radius: 8px; text-align: center;">
-            <h3 style="margin-top: 0; color: #333;">⭐ Rate This Worker</h3>
+          
+          <!-- Booking Box -->
+          <div class="profile-booking-box">
+            <h3>📅 Book Service</h3>
             
-            ${userRating ? `
-              <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Your Rating: ${userRating.rating}/5</p>
-            ` : `
-              <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Share your experience</p>
-            `}
-            
-            <div id="star-rating-${worker.id}" style="font-size: 40px; margin: 15px 0; cursor: pointer; letter-spacing: 10px;">
-              <span onclick="window.selectRating(${worker.id}, 1)" style="cursor: pointer;">☆</span>
-              <span onclick="window.selectRating(${worker.id}, 2)" style="cursor: pointer;">☆</span>
-              <span onclick="window.selectRating(${worker.id}, 3)" style="cursor: pointer;">☆</span>
-              <span onclick="window.selectRating(${worker.id}, 4)" style="cursor: pointer;">☆</span>
-              <span onclick="window.selectRating(${worker.id}, 5)" style="cursor: pointer;">☆</span>
+            <div class="booking-form-group">
+              <label>Date:</label>
+              <input type="date" id="booking-date-${worker.id}" min="${new Date().toISOString().split('T')[0]}">
             </div>
             
-            <textarea id="review-text-${worker.id}" placeholder="Write your review (optional)..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin: 10px 0; resize: vertical; min-height: 60px; font-family: Arial;"></textarea>
+            <div class="booking-form-group">
+              <label>Start Time:</label>
+              <input type="time" id="booking-start-${worker.id}">
+            </div>
             
-            <button onclick="window.submitRating(${worker.id})" style="width: 100%; padding: 12px; background: #ffc107; color: #333; border: 2px solid #ff9800; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 14px;">
-              ⭐ Submit Rating
-            </button>
+            <div class="booking-form-group">
+              <label>Duration (hours):</label>
+              <select id="booking-duration-${worker.id}">
+                <option value="1">1 hour</option>
+                <option value="2">2 hours</option>
+                <option value="3">3 hours</option>
+                <option value="4">4 hours</option>
+                <option value="8">Full day (8 hours)</option>
+              </select>
+            </div>
             
-            <p style="font-size: 11px; color: #999; margin: 10px 0 0 0;">Click stars to rate (1-5)</p>
+            <div class="booking-form-group">
+              <label>Service Details:</label>
+              <textarea id="booking-desc-${worker.id}" placeholder="Describe what you need..."></textarea>
+            </div>
+            
+            <button class="booking-submit-btn" onclick="createBooking(${worker.id}, ${worker.hourly_rate})">📅 Book Now</button>
+            <p class="booking-rate-info">Rate: ₹${worker.hourly_rate}/hour</p>
+          </div>
+          
+          <!-- Rating Box -->
+          <div class="profile-rating-box">
+            <h3>⭐ Rate This Worker</h3>
+            ${userRating ? `<p class="rating-display">Your Rating: ${userRating.rating}/5</p>` : ''}
+            <div class="star-rating-container">
+              <span onclick="window.selectRating(${worker.id}, 1)">☆</span>
+              <span onclick="window.selectRating(${worker.id}, 2)">☆</span>
+              <span onclick="window.selectRating(${worker.id}, 3)">☆</span>
+              <span onclick="window.selectRating(${worker.id}, 4)">☆</span>
+              <span onclick="window.selectRating(${worker.id}, 5)">☆</span>
+            </div>
+            <textarea class="review-textarea" id="review-text-${worker.id}" placeholder="Write your review (optional)..."></textarea>
+            <button class="rating-submit-btn" onclick="window.submitRating(${worker.id})">⭐ Submit Rating</button>
+            <p class="rating-note">Click stars to rate (1-5)</p>
           </div>
         </div>
       </div>
+      
+      <!-- Map -->
+      <div id="profile-map"></div>
     </div>
   `;
-  // If worker has a location string, try to initialize map
+  
+  // Load certificates and map
   if (worker.location) {
     try {
       initMapForAddress(worker.location);
@@ -932,14 +977,11 @@ ${/* Certificates Section */ ''}
       console.log('Map init error:', e);
     }
   }
-  // Load certificates
-console.log('📄 Loading certificates for worker profile...');
-loadProfileCertificates(worker.id);
+  loadProfileCertificates(worker.id);
+  console.log('✅ Profile displayed');
+}
 
-  // Add this at end of displayWorkerProfile()
-loadProfileCertificates(worker.id);
-
-// Add this function:
+// Load certificates for worker profile
 async function loadProfileCertificates(workerId) {
   try {
     const response = await fetch(`${API_BASE_URL}/certificates/${workerId}`);
@@ -949,29 +991,25 @@ async function loadProfileCertificates(workerId) {
     if (!container) return;
 
     if (!data.success || data.data.length === 0) {
-      container.innerHTML = '<p style="color: #999;">No certificates</p>';
+      container.innerHTML = '<p style="color: var(--color-text-secondary);">No certificates</p>';
       return;
     }
 
-    let html = '<div style="display: grid; gap: 10px;">';
+    let html = '';
     data.data.forEach(cert => {
       html += `
-        <div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #4CAF50;">
+        <div class="certificate-item">
           <strong>${escapeHtml(cert.certificate_name)}</strong>
-          ${cert.description ? `<p style="font-size: 12px; color: #666; margin: 5px 0;">${escapeHtml(cert.description)}</p>` : ''}
-          <a href="${cert.file_path}" target="_blank" style="color: #2196F3; font-size: 12px;">📥 Download PDF</a>
+          ${cert.description ? `<p>${escapeHtml(cert.description)}</p>` : ''}
+          <a href="${cert.file_path}" target="_blank">📥 Download PDF</a>
         </div>
       `;
     });
-    html += '</div>';
     
     container.innerHTML = html;
   } catch (error) {
     console.error('Error loading certificates:', error);
   }
-}
-
-  console.log('✅ Profile displayed with rating section');
 }
 
 // ============= BOOKING SYSTEM =============
