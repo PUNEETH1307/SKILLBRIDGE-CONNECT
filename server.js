@@ -528,26 +528,29 @@ const upload = multer({
 // ============= CERTIFICATE ROUTES =============
 
 // Upload certificate
+// Upload certificate
 app.post('/api/certificates', authenticateToken, upload.single('certificate_file'), async (req, res) => {
   try {
-    const { certificate_name, description } = req.body;
-    const worker_id = req.user.id;
+    const { certificate_name, description, worker_id } = req.body;
+    const user_id = req.user.id;
 
-    console.log('📄 Certificate upload:', { worker_id, certificate_name });
+    console.log('📄 Certificate upload:', { user_id, worker_id, certificate_name });
 
     if (!certificate_name || !req.file) {
       return res.json({ success: false, message: 'Certificate name and PDF file required' });
     }
 
+    // Use worker_id from request body if provided, otherwise use user_id
+    const actualWorkerId = worker_id || user_id;
+
     const connection = await pool.getConnection();
 
     try {
-      // Insert certificate record
       await connection.query(
         `INSERT INTO certificates (worker_id, certificate_name, description, file_name, file_path, file_size) 
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
-          worker_id,
+          actualWorkerId,
           certificate_name,
           description || '',
           req.file.filename,
@@ -559,16 +562,16 @@ app.post('/api/certificates', authenticateToken, upload.single('certificate_file
       // Update worker certificate count
       const [result] = await connection.query(
         `SELECT COUNT(*) as count FROM certificates WHERE worker_id = ?`,
-        [worker_id]
+        [actualWorkerId]
       );
       const certCount = result.count;
 
       await connection.query(
         `UPDATE workers SET certificate_count = ? WHERE id = ?`,
-        [certCount, worker_id]
+        [certCount, actualWorkerId]
       );
 
-      console.log('✅ Certificate uploaded successfully');
+      console.log('✅ Certificate uploaded for worker:', actualWorkerId);
 
       res.json({
         success: true,
@@ -584,17 +587,15 @@ app.post('/api/certificates', authenticateToken, upload.single('certificate_file
 
   } catch (error) {
     console.error('❌ Certificate upload error:', error);
-    
-    // Delete uploaded file if database insert fails
     if (req.file) {
       fs.unlink(req.file.path, (err) => {
         if (err) console.error('Error deleting file:', err);
       });
     }
-
     res.json({ success: false, message: 'Certificate upload error: ' + error.message });
   }
 });
+
 
 // Get worker's certificates
 app.get('/api/certificates/:workerId', async (req, res) => {

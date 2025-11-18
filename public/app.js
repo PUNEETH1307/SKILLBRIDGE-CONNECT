@@ -275,15 +275,13 @@ async function handleWorkerRegistration(e) {
   }
 
   try {
-    // Collect specialties
+    // Collect form data
     const specialtyCheckboxes = document.querySelectorAll('#specialties-container input[type="checkbox"]:checked');
     const specialties = Array.from(specialtyCheckboxes).map(cb => cb.value);
 
-    // Collect work areas
     const areaCheckboxes = document.querySelectorAll('#work-areas-container input[type="checkbox"]:checked');
     const service_areas = Array.from(areaCheckboxes).map(cb => cb.value);
 
-    // Collect form data
     const formData = {
       name: document.getElementById('worker-name').value,
       phone: document.getElementById('worker-phone').value,
@@ -300,8 +298,6 @@ async function handleWorkerRegistration(e) {
       certifications: document.getElementById('worker-certifications').value
     };
 
-    console.log('📋 Form data:', formData);
-
     // Validate
     if (!formData.name || !formData.phone || !formData.email || !formData.occupation || !formData.hourly_rate || !formData.location) {
       alert('❌ Please fill in all required fields');
@@ -309,14 +305,13 @@ async function handleWorkerRegistration(e) {
     }
 
     // Show loading
-    const submitBtn = document.querySelector('button[type="submit"]');
+    const submitBtn = document.querySelector('#worker-form button[type="submit"]');
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = '⏳ Registering...';
     }
 
-    // Send to server
-    console.log('🚀 Sending to server...');
+    // Register worker
     const response = await fetch('http://localhost:3000/api/workers', {
       method: 'POST',
       headers: {
@@ -326,34 +321,40 @@ async function handleWorkerRegistration(e) {
       body: JSON.stringify(formData)
     });
 
-    console.log('📊 Response status:', response.status);
     const data = await response.json();
-    console.log('📥 Response:', data);
+    console.log('📥 Registration response:', data);
 
     if (data.success) {
-      // ✅ NEW: Upload certificates
-      await uploadCertificatesAfterRegistration(data.data.id);
+      const workerId = data.data.id;
+      console.log('✅ Worker registered with ID:', workerId);
+
+      // Upload certificates if any
+      if (certificatesToUpload.length > 0) {
+        if (submitBtn) submitBtn.textContent = '📤 Uploading certificates...';
+        await uploadCertificatesAfterRegistration(workerId);
+      }
 
       // Show success
       document.getElementById('success-title').textContent = 'Registration Successful!';
-      document.getElementById('success-message').textContent = 'Your worker profile has been created successfully!';
+      document.getElementById('success-message').textContent = 
+        certificatesToUpload.length > 0 
+        ? 'Your worker profile and certificates have been uploaded successfully!'
+        : 'Your worker profile has been created successfully!';
       showModal('success-modal');
 
       // Reset form
       document.getElementById('worker-form').reset();
       document.getElementById('specialties-container').innerHTML = '';
       
-      // Reset certificate list
+      // Clear certificate queue
       certificatesToUpload = [];
       displayCertificatesToUpload();
 
-      // Refresh workers
+      // Refresh workers list
       await fetchWorkersFromSQL();
 
-      console.log('✅ Worker registered successfully');
     } else {
       alert('❌ ' + (data.message || 'Registration failed'));
-      console.error('❌ Server error:', data);
     }
 
     if (submitBtn) {
@@ -365,13 +366,14 @@ async function handleWorkerRegistration(e) {
     console.error('❌ Registration error:', error);
     alert('❌ Error: ' + error.message);
     
-    const submitBtn = document.querySelector('button[type="submit"]');
+    const submitBtn = document.querySelector('#worker-form button[type="submit"]');
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit';
     }
   }
 }
+
 // ============= LOAD & DISPLAY CERTIFICATES IN PROFILE =============
 
 async function loadProfileCertificates(workerId) {
@@ -938,8 +940,11 @@ async function uploadCertificate() {
 }
 // ============= COMBINED CERTIFICATE MANAGEMENT =============
 
-let certificatesToUpload = []; // Store certificates to upload with registration
+// ============= CERTIFICATE MANAGEMENT - COMPLETE WORKING VERSION =============
 
+let certificatesToUpload = []; // Store certificates before registration
+
+// Add certificate to the upload queue
 function addCertificateToList() {
   console.log('➕ Adding certificate to list...');
   
@@ -947,36 +952,52 @@ function addCertificateToList() {
   const certDesc = document.getElementById('certificate-description-field')?.value?.trim() || '';
   const certFileInput = document.getElementById('certificate-file-field');
   
-  // Certificate name is required if file is selected
-  if (certFileInput && certFileInput.files.length > 0) {
-    if (!certName) {
-      alert('❌ Please enter certificate name');
-      return;
-    }
-  } else {
-    // If no file, skip (certificates are optional)
+  // Validate inputs
+  if (!certName) {
+    alert('❌ Please enter certificate name');
+    return;
+  }
+  
+  if (!certFileInput || !certFileInput.files || certFileInput.files.length === 0) {
     alert('❌ Please select a PDF file');
     return;
   }
   
-  const certFile = certFileInput.files;
+  const certFile = certFileInput.files[0];
   
-  // Check extension
-  const fileName = certFile.name.toLowerCase();
+  // ✅ FIXED: Check if certFile exists and has name
+  if (!certFile || !certFile.name) {
+    console.error('❌ File object invalid:', certFile);
+    alert('❌ File selection failed. Please try again.');
+    return;
+  }
+  
+  console.log('📄 File:', certFile.name, 'Size:', certFile.size);
+  
+  // Check extension - ✅ FIXED: Handle undefined safely
+  const fileName = certFile.name ? certFile.name.toLowerCase() : '';
+  
+  if (!fileName) {
+    alert('❌ Invalid file');
+    return;
+  }
+  
   const fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
   
+  console.log('📋 Extension:', fileExtension);
+  
   if (fileExtension !== 'pdf') {
-    alert('❌ Only PDF files allowed');
+    alert('❌ Only PDF files allowed. You selected: ' + fileExtension);
     return;
   }
   
-  // Check size
+  // Check size (5MB)
   if (certFile.size > 5 * 1024 * 1024) {
-    alert('❌ File size must be less than 5MB');
+    alert('❌ File size must be less than 5MB. Your file: ' + (certFile.size / 1024 / 1024).toFixed(2) + 'MB');
     return;
   }
   
-  // Add to list
+  // Add to queue
   const certId = Date.now();
   certificatesToUpload.push({
     id: certId,
@@ -985,9 +1006,12 @@ function addCertificateToList() {
     file: certFile
   });
   
-  console.log('✅ Certificate added to list. Total:', certificatesToUpload.length);
+  console.log('✅ Certificate added. Total:', certificatesToUpload.length);
   
-  // Clear form
+  // Show success message
+  alert('✅ Certificate added! You can add more or click Submit to register.');
+  
+  // Clear form fields
   document.getElementById('certificate-name-field').value = '';
   document.getElementById('certificate-description-field').value = '';
   document.getElementById('certificate-file-field').value = '';
@@ -996,40 +1020,58 @@ function addCertificateToList() {
   displayCertificatesToUpload();
 }
 
-function removeCertificateFromList(certId) {
-  certificatesToUpload = certificatesToUpload.filter(c => c.id !== certId);
-  console.log('🗑️ Certificate removed. Total:', certificatesToUpload.length);
-  displayCertificatesToUpload();
-}
 
+// Display the list of certificates to be uploaded
 function displayCertificatesToUpload() {
   const container = document.getElementById('certificates-container');
+  
+  if (!container) {
+    console.error('❌ certificates-container not found');
+    return;
+  }
   
   if (certificatesToUpload.length === 0) {
     container.innerHTML = '';
     return;
   }
   
-  let html = '<h4 style="margin-top: 0;">Certificates to Upload:</h4><div style="display: grid; gap: 8px;">';
+  let html = '<div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">';
+  html += '<h4 style="margin: 0 0 10px 0; color: #1976d2;">📋 Certificates Ready to Upload:</h4>';
+  html += '<div style="display: grid; gap: 8px;">';
   
   certificatesToUpload.forEach(cert => {
+    const fileSizeKB = (cert.file.size / 1024).toFixed(0);
     html += `
-      <div style="background: #e8f5e9; padding: 10px; border-radius: 4px; border-left: 4px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <strong>${escapeHtml(cert.name)}</strong>
-          <p style="font-size: 12px; color: #666; margin: 3px 0;">${escapeHtml(cert.file.name)} (${(cert.file.size / 1024).toFixed(0)}KB)</p>
+      <div style="background: white; padding: 10px; border-radius: 4px; border-left: 4px solid #4CAF50; display: flex; justify-content: space-between; align-items: center;">
+        <div style="flex: 1;">
+          <strong style="color: #333;">📄 ${escapeHtml(cert.name)}</strong>
+          <p style="font-size: 11px; color: #666; margin: 3px 0 0 0;">
+            ${escapeHtml(cert.file.name)} (${fileSizeKB} KB)
+            ${cert.description ? ' - ' + escapeHtml(cert.description) : ''}
+          </p>
         </div>
-        <button onclick="removeCertificateFromList(${cert.id})" style="background: #f44336; color: white; border: none; border-radius: 3px; padding: 5px 10px; cursor: pointer; font-size: 12px;">🗑️</button>
+        <button onclick="removeCertificateFromList(${cert.id})" style="background: #f44336; color: white; border: none; border-radius: 3px; padding: 5px 10px; cursor: pointer; font-size: 11px;">
+          🗑️ Remove
+        </button>
       </div>
     `;
   });
   
-  html += '</div>';
+  html += '</div></div>';
   container.innerHTML = html;
 }
 
+// Remove certificate from upload queue
+function removeCertificateFromList(certId) {
+  certificatesToUpload = certificatesToUpload.filter(c => c.id !== certId);
+  console.log('🗑️ Certificate removed. Remaining:', certificatesToUpload.length);
+  displayCertificatesToUpload();
+}
+
+// Upload all certificates after worker is created
 async function uploadCertificatesAfterRegistration(workerId) {
-  console.log('📄 Uploading certificates for worker:', workerId);
+  console.log('📤 Starting certificate upload for worker:', workerId);
+  console.log('Certificates to upload:', certificatesToUpload.length);
   
   if (certificatesToUpload.length === 0) {
     console.log('ℹ️ No certificates to upload');
@@ -1038,14 +1080,25 @@ async function uploadCertificatesAfterRegistration(workerId) {
   
   const token = localStorage.getItem('authToken');
   
-  for (let cert of certificatesToUpload) {
+  if (!token) {
+    console.error('❌ No auth token found');
+    return false;
+  }
+  
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (let i = 0; i < certificatesToUpload.length; i++) {
+    const cert = certificatesToUpload[i];
+    
     try {
       const formData = new FormData();
       formData.append('certificate_name', cert.name);
       formData.append('description', cert.description);
       formData.append('certificate_file', cert.file);
+      formData.append('worker_id', workerId); // Explicitly pass worker_id
       
-      console.log('📤 Uploading:', cert.name);
+      console.log(`📤 Uploading certificate ${i + 1}/${certificatesToUpload.length}:`, cert.name);
       
       const response = await fetch(`${API_BASE_URL}/certificates`, {
         method: 'POST',
@@ -1057,23 +1110,89 @@ async function uploadCertificatesAfterRegistration(workerId) {
       
       const data = await response.json();
       
-      if (!data.success) {
-        console.error('❌ Certificate upload failed:', data.message);
-        alert('⚠️ Warning: Certificate upload failed: ' + data.message);
-      } else {
+      if (data.success) {
         console.log('✅ Certificate uploaded:', cert.name);
+        successCount++;
+      } else {
+        console.error('❌ Certificate upload failed:', data.message);
+        failCount++;
       }
     } catch (error) {
       console.error('❌ Error uploading certificate:', error);
-      alert('⚠️ Warning: Could not upload certificate ' + cert.name);
+      failCount++;
     }
   }
   
-  // Clear list after upload
+  console.log(`📊 Upload complete: ${successCount} success, ${failCount} failed`);
+  
+  // Clear the upload queue
   certificatesToUpload = [];
   displayCertificatesToUpload();
   
-  return true;
+  if (failCount > 0) {
+    alert(`⚠️ Warning: ${failCount} certificate(s) failed to upload`);
+  }
+  
+  return successCount > 0;
+}
+
+// Load and display certificates in worker profile
+async function loadProfileCertificates(workerId) {
+  console.log('📄 Loading certificates for worker:', workerId);
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/certificates/${workerId}`);
+    const data = await response.json();
+    
+    console.log('📥 Certificates response:', data);
+    
+    const container = document.getElementById(`profile-certificates-${workerId}`);
+    if (!container) {
+      console.error('❌ Certificate container not found');
+      return;
+    }
+
+    if (!data.success || !data.data || data.data.length === 0) {
+      console.log('ℹ️ No certificates found for worker', workerId);
+      container.innerHTML = '<p style="color: #999; font-style: italic;">No certificates uploaded</p>';
+      return;
+    }
+
+    console.log('✅ Found', data.data.length, 'certificate(s)');
+
+    let html = '<div style="display: grid; gap: 12px;">';
+    
+    data.data.forEach(cert => {
+      const uploadDate = new Date(cert.uploaded_at).toLocaleDateString();
+      
+      html += `
+        <div style="background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #4CAF50; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+              <strong style="color: #333; font-size: 14px;">📄 ${escapeHtml(cert.certificate_name)}</strong>
+              ${cert.description ? `<p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">${escapeHtml(cert.description)}</p>` : ''}
+              <small style="color: #999; font-size: 11px;">Uploaded: ${uploadDate}</small>
+            </div>
+            <a href="${cert.file_path}" target="_blank" download style="padding: 8px 12px; background: #2196F3; color: white; border-radius: 4px; text-decoration: none; font-size: 12px; white-space: nowrap;">
+              📥 Download
+            </a>
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+    
+    container.innerHTML = html;
+    console.log('✅ Displayed', data.data.length, 'certificate(s)');
+
+  } catch (error) {
+    console.error('❌ Error loading certificates:', error);
+    const container = document.getElementById(`profile-certificates-${workerId}`);
+    if (container) {
+      container.innerHTML = '<p style="color: #f44336;">Error loading certificates</p>';
+    }
+  }
 }
 
 
