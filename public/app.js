@@ -2427,8 +2427,10 @@ function bindEvent(id, event, handler) {
 async function loadWorkerProfile() {
   try {
     const token = localStorage.getItem('authToken');
+    console.log('🔍 Loading worker profile... Token:', token ? 'Present' : 'Missing');
+    
     if (!token) {
-      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px;">Please login to view your worker profile.</p>';
+      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px; font-size: 16px;">🔑 Please login to view your worker profile.</p>';
       return;
     }
 
@@ -2436,28 +2438,42 @@ async function loadWorkerProfile() {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();
+    console.log('👤 User data response:', data);
 
     if (!data.success) {
-      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px;">Error loading profile.</p>';
+      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px;">❌ Error loading profile.</p>';
       return;
     }
 
     const user = data.data;
+    console.log('✅ User loaded:', user.name, 'Worker ID:', user.worker_id);
 
     // Check if user is a worker
     if (!user.worker_id) {
-      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px; font-size: 16px;">📝 You need to join as a worker to see your profile details here.</p>';
+      document.getElementById('about-content').innerHTML = `
+        <div style="background: var(--color-bg-1); padding: 40px 20px; border-radius: 12px; text-align: center;">
+          <h3 style="color: var(--color-text); margin-top: 0;">👷 Not Registered as a Worker</h3>
+          <p style="color: var(--color-text-secondary); font-size: 16px; line-height: 1.6;">
+            You haven't registered as a worker yet. Register now to display your profile, skills, and attract customers!
+          </p>
+          <button class="btn btn--primary" onclick="showSection('worker-registration')" style="margin-top: 20px;">
+            📝 Register as Worker
+          </button>
+        </div>
+      `;
       return;
     }
 
     // Fetch worker details
+    console.log('🔄 Fetching worker details for ID:', user.worker_id);
     const workerResponse = await fetch(`${API_BASE_URL}/workers/${user.worker_id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const workerData = await workerResponse.json();
+    console.log('📊 Worker data response:', workerData);
 
     if (!workerData.success) {
-      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px;">Error loading worker profile.</p>';
+      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px;">❌ Error loading worker profile.</p>';
       return;
     }
 
@@ -2468,7 +2484,7 @@ async function loadWorkerProfile() {
     let html = `
       <div style="max-width: 900px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-active) 100%); color: var(--color-btn-primary-text); padding: 30px; border-radius: 12px; margin-bottom: 30px; text-align: center;">
-          <h1 style="margin: 0 0 10px 0; font-size: 28px;">${escapeHtml(worker.name)}</h1>
+          <h1 style="margin: 0 0 10px 0; font-size: 28px;">👤 ${escapeHtml(worker.name)}</h1>
           <p style="margin: 5px 0; font-size: 18px; opacity: 0.95;">🎯 ${escapeHtml(worker.occupation)}</p>
           <div style="display: flex; justify-content: center; gap: 30px; margin-top: 20px; flex-wrap: wrap;">
             <div><strong>⭐ Rating:</strong> ${worker.rating || 0}/5 (${worker.total_reviews || 0} reviews)</div>
@@ -2481,45 +2497,58 @@ async function loadWorkerProfile() {
         <div style="display: grid; gap: 20px;">
           ${worker.description ? `
             <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border);">
-              <h3 style="color: var(--color-text); margin-top: 0;">📋 About Me</h3>
+              <h3 style="color: var(--color-text); margin-top: 0; margin-bottom: 10px;">📋 About Me</h3>
               <p style="color: var(--color-text); line-height: 1.6; margin: 0;">${escapeHtml(worker.description)}</p>
             </div>
           ` : ''}
 
-          ${specialties.length > 0 ? `
+          ${specialties && specialties.length > 0 ? `
             <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border);">
-              <h3 style="color: var(--color-text); margin-top: 0;">🔧 Skills & Specialties</h3>
+              <h3 style="color: var(--color-text); margin-top: 0; margin-bottom: 15px;">🔧 Skills & Specialties</h3>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
-                ${specialties.map(s => `<div style="background: var(--color-bg-1); padding: 10px; border-radius: 6px; border-left: 4px solid var(--color-primary); color: var(--color-text); font-size: 14px;">${escapeHtml(s)}</div>`).join('')}
+                ${specialties.map(s => `<div style="background: var(--color-bg-1); padding: 10px; border-radius: 6px; border-left: 4px solid var(--color-primary); color: var(--color-text); font-size: 14px; text-align: center;">✓ ${escapeHtml(s)}</div>`).join('')}
               </div>
             </div>
           ` : ''}
 
-          ${serviceAreas.length > 0 ? `
+          ${serviceAreas && serviceAreas.length > 0 ? `
             <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border);">
-              <h3 style="color: var(--color-text); margin-top: 0;">📍 Service Areas</h3>
+              <h3 style="color: var(--color-text); margin-top: 0; margin-bottom: 15px;">📍 Service Areas</h3>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
-                ${serviceAreas.map(a => `<div style="background: var(--color-bg-3); padding: 10px; border-radius: 6px; border-left: 4px solid var(--color-success); color: var(--color-text); font-size: 14px;">📍 ${escapeHtml(a)}</div>`).join('')}
+                ${serviceAreas.map(a => `<div style="background: var(--color-bg-3); padding: 10px; border-radius: 6px; border-left: 4px solid var(--color-success); color: var(--color-text); font-size: 14px; text-align: center;">📍 ${escapeHtml(a)}</div>`).join('')}
               </div>
             </div>
           ` : ''}
 
-          <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border); display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div>
-              <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">📍 Location</p>
-              <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.location)}</p>
+          <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border);">
+            <h3 style="color: var(--color-text); margin-top: 0; margin-bottom: 15px;">📋 Work Information</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <div>
+                <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">📍 Location</p>
+                <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.location || 'Not specified')}</p>
+              </div>
+              <div>
+                <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">⏱️ Available Hours</p>
+                <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.available_hours || 'Flexible')}</p>
+              </div>
+              <div>
+                <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">🚗 Travel Radius</p>
+                <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.travel_radius || 'Negotiable')} km</p>
+              </div>
+              <div>
+                <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">📱 Phone</p>
+                <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.phone || 'Not specified')}</p>
+              </div>
             </div>
-            <div>
-              <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">⏱️ Available Hours</p>
-              <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.available_hours || 'Flexible')}</p>
-            </div>
-            <div>
-              <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">🚗 Travel Radius</p>
-              <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.travel_radius || 'Negotiable')}</p>
-            </div>
-            <div>
-              <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">📱 Phone</p>
-              <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.phone)}</p>
+          </div>
+
+          <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border);">
+            <h3 style="color: var(--color-text); margin-top: 0; margin-bottom: 15px;">📧 Contact Information</h3>
+            <div style="display: grid; gap: 12px;">
+              <div>
+                <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">✉️ Email</p>
+                <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(user.email)}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -2527,9 +2556,10 @@ async function loadWorkerProfile() {
     `;
 
     document.getElementById('about-content').innerHTML = html;
+    console.log('✅ Worker profile displayed successfully');
   } catch (error) {
     console.error('❌ Error loading worker profile:', error);
-    document.getElementById('about-content').innerHTML = '<p style="color: #f44336; padding: 20px;">Error loading profile. Please try again.</p>';
+    document.getElementById('about-content').innerHTML = '<p style="color: #f44336; padding: 20px; text-align: center;">⚠️ Error loading profile. Please try again.</p>';
   }
 }
 

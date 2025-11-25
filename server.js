@@ -62,7 +62,7 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
     const userId = req.user.id;
     const connection = await pool.getConnection();
     const [rows] = await connection.query(
-      `SELECT u.id, u.email, u.phone, u.user_type, w.name as worker_name
+      `SELECT u.id, u.email, u.phone, u.user_type, w.id as worker_id, w.name as worker_name
        FROM users u
        LEFT JOIN workers w ON w.user_id = u.id
        WHERE u.id = ?`,
@@ -75,7 +75,17 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
     }
 
     const user = rows[0];
-    res.json({ success: true, data: { id: user.id, email: user.email, phone: user.phone, user_type: user.user_type, name: user.worker_name || null } });
+    res.json({ 
+      success: true, 
+      data: { 
+        id: user.id, 
+        email: user.email, 
+        phone: user.phone, 
+        user_type: user.user_type, 
+        name: user.worker_name || null,
+        worker_id: user.worker_id || null
+      } 
+    });
   } catch (error) {
     console.error('❌ Get current user error:', error);
     res.json({ success: false, message: 'Error: ' + error.message });
@@ -678,7 +688,7 @@ app.get('/api/workers/:id', async (req, res) => {
       return res.json({ success: false, message: 'Worker not found' });
     }
 
-    res.json({ success: true, data: workers, worker: workers });
+    res.json({ success: true, data: workers[0] });
   } catch (error) {
     console.error('❌ Get worker error:', error);
     res.json({ success: false, message: 'Error: ' + error.message });
