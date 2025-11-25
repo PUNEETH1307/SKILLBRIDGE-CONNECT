@@ -1,0 +1,109 @@
+================================================================================
+SKILLBRIDGE CONNECT - DATABASE RESET COMPLETE
+================================================================================
+
+✅ DATABASE TABLES CLEARED:
+- Users: 0 records
+- Workers: 0 records
+- Bookings: 0 records
+- Ratings: 0 records
+- Certificates: 0 records
+
+================================================================================
+HOW TO COMPLETE THE FULL RESET:
+================================================================================
+
+STEP 1: Clear Browser Cache and localStorage
+-------------------------------------------
+Open your browser's Developer Tools:
+- Chrome/Edge: F12 or Ctrl+Shift+I
+- Firefox: F12
+- Safari: Cmd+Option+I
+
+Then:
+1. Go to Application tab (or Storage in Firefox)
+2. Clear localStorage:
+   - In Chrome: Click "Clear site data" or
+   - In Firefox: Click Local Storage > select all > delete
+3. Clear sessionStorage the same way
+4. Go to Cookies section and delete all cookies for localhost:3000
+5. Go to Cache Storage and clear all
+
+ALTERNATIVE - One-liner in browser console:
+---------
+localStorage.clear(); sessionStorage.clear(); location.reload();
+
+STEP 2: Hard Refresh Browser (Clear Browser Cache)
+-------------------------------------------
+- Windows/Linux: Ctrl + Shift + Delete (or Ctrl + F5)
+- Mac: Cmd + Shift + Delete (or Cmd + Shift + R)
+
+OR go to Settings > Privacy > Clear browsing data
+
+STEP 3: Verify Database is Empty
+-------------------------------------------
+Connect to MySQL:
+mysql -u root -pPUNEE13@work
+
+Then run these commands:
+USE skillbridge;
+SELECT COUNT(*) as users FROM users;
+SELECT COUNT(*) as workers FROM workers;
+SELECT COUNT(*) as bookings FROM bookings;
+SELECT COUNT(*) as ratings FROM rating;
+
+All should show 0 rows.
+
+STEP 4: Restart the Server
+-------------------------------------------
+Terminal:
+cd "c:\Users\punee\OneDrive\Desktop\MY PROJECTS\web development\skillbridge-connect"
+node server.js
+
+STEP 5: Visit Website Fresh
+-------------------------------------------
+1. Open http://localhost:3000 in a NEW INCOGNITO/PRIVATE window
+   (This ensures completely fresh cache)
+2. All old data should be gone
+3. You can now register new users and workers from scratch
+
+================================================================================
+IF YOU STILL SEE OLD DATA:
+================================================================================
+
+It might be cached in memory. Try these steps:
+
+1. Close ALL browser tabs and windows
+2. Kill the server process:
+   - In terminal: Ctrl+C
+   - Or in another terminal: taskkill /PID 12672 /F
+
+3. Wait 5 seconds
+
+4. Start server again:
+   node server.js
+
+5. Open browser in INCOGNITO mode
+6. Visit http://localhost:3000
+
+================================================================================
+FOR NEXT TIME - QUICK RESET:
+================================================================================
+
+Save this as a .sql file and run:
+
+mysql -u root -pPUNEE13@work < reset_database.sql
+
+Script (reset_database.sql):
+---
+USE skillbridge;
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE certificates;
+TRUNCATE TABLE bookings;
+TRUNCATE TABLE rating;
+TRUNCATE TABLE workers;
+TRUNCATE TABLE users;
+SET FOREIGN_KEY_CHECKS = 1;
+---
+
+================================================================================

@@ -199,17 +199,21 @@ async function loadWorkerServices() {
     const container = document.getElementById('worker-services-list');
     if (!container) return;
     if (!data.success || !Array.isArray(data.data) || data.data.length === 0) {
-      container.innerHTML = '<p style="color:#999;">No confirmed services yet.</p>';
+      container.innerHTML = '<p class="services-empty-state">No confirmed services yet.</p>';
       return;
     }
 
     let html = '';
     data.data.forEach(b => {
       html += `
-        <div style="background:white;padding:15px;border-radius:8px;border-left:5px solid #2196F3;">
-          <h4 style="margin:0;">Customer: ${escapeHtml(b.customer_email)}</h4>
-          <p style="margin:6px 0;">Date: ${new Date(b.booking_date).toLocaleDateString()} | ${b.start_time} - ${b.end_time}</p>
-          <p style="margin:6px 0;">Price: ₹${b.total_price || 0}</p>
+        <div class="service-card">
+          <div class="service-card-header">
+            <h4>📍 ${escapeHtml(b.customer_email)}</h4>
+          </div>
+          <div class="service-card-body">
+            <p class="service-date"><i class="fas fa-calendar"></i> ${new Date(b.booking_date).toLocaleDateString()} | ${b.start_time} - ${b.end_time}</p>
+            <p class="service-price"><i class="fas fa-rupee-sign"></i> ₹${b.total_price || 0}</p>
+          </div>
         </div>
       `;
     });

@@ -1183,9 +1183,10 @@ textarea::placeholder {
 .worker-card {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
-  padding: var(--space-20);
+  padding: 0;
   border: 1px solid var(--color-card-border);
   transition: transform var(--duration-normal) var(--ease-standard), box-shadow var(--duration-normal) var(--ease-standard);
+  overflow: hidden;
 }
 
 .worker-card:hover {
@@ -1197,7 +1198,9 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: var(--space-16);
-  margin-bottom: var(--space-16);
+  margin-bottom: 0;
+  padding: var(--space-20);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-active) 100%);
 }
 
 .worker-avatar {
@@ -1205,23 +1208,33 @@ textarea::placeholder {
   height: 60px;
   border-radius: var(--radius-full);
   object-fit: cover;
+  border: 3px solid var(--color-btn-primary-text);
+}
+
+.worker-info {
+  flex: 1;
 }
 
 .worker-info h3 {
   margin-bottom: var(--space-4);
-  color: var(--color-text);
+  color: var(--color-btn-primary-text);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
 }
 
 .worker-occupation {
-  color: var(--color-primary);
+  color: rgba(var(--color-btn-primary-text), 0.9);
   font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
 }
 
 .worker-rating {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin-top: var(--space-4);
+  margin-top: var(--space-6);
+  font-size: var(--font-size-sm);
+  color: rgba(var(--color-btn-primary-text), 0.95);
 }
 
 .rating-stars {
@@ -1230,6 +1243,8 @@ textarea::placeholder {
 
 .worker-details {
   margin-bottom: var(--space-16);
+  padding: var(--space-20);
+  background: var(--color-surface);
 }
 
 .detail-item {
@@ -1237,40 +1252,145 @@ textarea::placeholder {
   align-items: center;
   gap: var(--space-8);
   margin-bottom: var(--space-8);
-  color: var(--color-text-secondary);
+  color: var(--color-text);
   font-size: var(--font-size-sm);
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
 }
 
 .worker-specialties {
   margin-bottom: var(--space-16);
+  padding: 0 var(--space-20);
 }
 
 .specialty-tag {
   display: inline-block;
-  background: var(--color-bg-3);
-  color: var(--color-text);
-  padding: var(--space-4) var(--space-8);
-  border-radius: var(--radius-base);
+  background: var(--color-bg-1);
+  color: var(--color-primary);
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
-  margin: var(--space-2);
+  margin: var(--space-4);
+  font-weight: var(--font-weight-medium);
+  border: 1px solid var(--color-primary);
 }
 
 .worker-actions {
   display: flex;
   gap: var(--space-8);
+  padding: var(--space-20);
+  padding-top: 0;
+  background: var(--color-surface);
+}
+
+.worker-actions button {
+  flex: 1;
+  padding: var(--space-10) var(--space-12);
+  border: none;
+  border-radius: var(--radius-base);
+  cursor: pointer;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-sm);
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.worker-actions button:first-child {
+  background: var(--color-primary);
+  color: var(--color-btn-primary-text);
+}
+
+.worker-actions button:first-child:hover {
+  background: var(--color-primary-hover);
+  transform: scale(1.02);
+}
+
+.worker-actions button:last-child {
+  background: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.worker-actions button:last-child:hover {
+  background: var(--color-secondary-hover);
 }
 
 .verified-badge {
-  background: var(--color-bg-3);
+  background: rgba(76, 175, 80, 0.2);
   color: var(--color-success);
-  padding: var(--space-2) var(--space-6);
+  padding: var(--space-4) var(--space-8);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  border: 1px solid rgba(var(--color-success-rgb), 0.3);
+  font-weight: var(--font-weight-bold);
+  border: 1px solid var(--color-success);
 }
 
 /* Worker Profile */
+.profile-content {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* My Services - Worker's Confirmed Bookings */
+.services-empty-state {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: var(--space-32);
+  font-size: var(--font-size-base);
+}
+
+.service-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-card-border);
+  border-left: 5px solid var(--color-primary);
+  overflow: hidden;
+  transition: all var(--duration-normal) var(--ease-standard);
+}
+
+.service-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.service-card-header {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-active) 100%);
+  padding: var(--space-16) var(--space-20);
+  color: var(--color-btn-primary-text);
+}
+
+.service-card-header h4 {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-btn-primary-text);
+}
+
+.service-card-body {
+  padding: var(--space-16) var(--space-20);
+  background: var(--color-surface);
+}
+
+.service-date,
+.service-price {
+  margin: var(--space-8) 0;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.service-date:first-of-type {
+  margin-top: 0;
+}
+
+.service-date i,
+.service-price i {
+  color: var(--color-primary);
+  width: 16px;
+}
+
 .profile-content {
   max-width: 1000px;
   margin: 0 auto;
@@ -1529,6 +1649,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .modal.hidden {
@@ -1541,7 +1662,7 @@ textarea::placeholder {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: transparent;
 }
 
 .modal-content {
@@ -1553,6 +1674,7 @@ textarea::placeholder {
   max-height: 80vh;
   overflow-y: auto;
   border: 1px solid var(--color-card-border);
+  box-shadow: var(--shadow-lg);
 }
 
 .modal-header {
@@ -1561,6 +1683,13 @@ textarea::placeholder {
   justify-content: space-between;
   padding: var(--space-20);
   border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-xl);
 }
 
 .modal-close {
@@ -1570,16 +1699,73 @@ textarea::placeholder {
   cursor: pointer;
   color: var(--color-text-secondary);
   padding: var(--space-4);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.modal-close:hover {
+  color: var(--color-text);
 }
 
 .modal-body {
   padding: var(--space-20);
+  background: var(--color-surface);
+}
+
+.modal-body .form-group {
+  margin-bottom: var(--space-16);
+}
+
+.modal-body .form-label {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--space-8);
+}
+
+.modal-body .form-control {
+  background-color: var(--color-background);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  padding: var(--space-12);
+  width: 100%;
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-base);
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.modal-body .form-control::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.modal-body .form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
+}
+
+.modal-body .btn {
+  width: 100%;
+  margin-top: var(--space-16);
+  font-weight: var(--font-weight-bold);
 }
 
 .modal-footer-text {
   text-align: center;
   margin-top: var(--space-16);
   color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.modal-footer-text a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.modal-footer-text a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
 .success-icon {
@@ -2478,4 +2664,29 @@ textarea::placeholder {
   .profile-stats {
     justify-content: center;
   }
+}
+
+/* Explicit dark-mode overrides for service cards to avoid white-on-white issues */
+[data-color-scheme="dark"] .service-card {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border: 1px solid var(--color-card-border) !important;
+}
+
+[data-color-scheme="dark"] .service-card-header {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-active) 100%) !important;
+  color: var(--color-btn-primary-text) !important;
+}
+
+[data-color-scheme="dark"] .service-card-header h4 {
+  color: var(--color-btn-primary-text) !important;
+}
+
+[data-color-scheme="dark"] .service-card-body {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+
+[data-color-scheme="dark"] #worker-services-list > .service-card {
+  border-left-color: var(--color-primary) !important;
 }
