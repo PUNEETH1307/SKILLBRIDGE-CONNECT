@@ -17,10 +17,10 @@
             </div>
             <div class="nav-menu">
                 <a href="#home" class="nav-link active" id="home-link">Home</a>
-                <a href="#about" class="nav-link">About</a>
+                <a href="#about" class="nav-link" id="about-link" onclick="showSection('about'); loadWorkerProfile();">About</a>
                 <a href="#services" class="nav-link" id="services-link" onclick="showSection('my-services'); loadWorkerServices();">Services</a>
                 <a href="#admin" class="nav-link" id="admin-link" style="display:none;" onclick="showSection('admin-dashboard'); loadAdminStats();">Admin</a>
-                <a href="#chat" class="nav-link" onclick="showSection('chat'); initializeChat();">Messages</a>
+                <a href="#messages" class="nav-link" onclick="showSection('messages'); initializeChat(); loadConversations();">Messages</a>
                 <a href="#my-bookings" class="nav-link" onclick="showSection('my-bookings'); loadBookings();">My Bookings</a>
                 <button class="theme-toggle" id="theme-toggle" title="Toggle Dark/Light Mode">
                     <i class="fas fa-sun"></i>
@@ -178,7 +178,71 @@
 
 
 
-    <!-- Worker Registration Section -->
+    <!-- About Section (Worker Profile) -->
+    <section id="about" class="section">
+        <div class="container">
+            <div class="section-header">
+                <button class="back-btn" id="back-from-about">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <h2 class="section-title">My Profile</h2>
+            </div>
+            <div id="about-content" style="background: var(--color-surface); border-radius: 12px; padding: 30px; border: 1px solid var(--color-card-border);">
+                <p style="color: var(--color-text-secondary); text-align: center;">📝 You need to join as a worker to see your profile details here.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Messages Section (Messaging Interface) -->
+    <section id="messages" class="section">
+        <div class="container">
+            <div class="section-header">
+                <button class="back-btn" id="back-from-messages">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <h2 class="section-title">💬 Messages</h2>
+            </div>
+
+            <div class="chat-container">
+                <div class="chat-sidebar">
+                    <h3 style="color: var(--color-text); margin-bottom: 15px;">📋 Conversations</h3>
+                    <div id="conversations-list" class="chat-list">
+                        <!-- Conversations will be populated here -->
+                    </div>
+                </div>
+
+                <div class="chat-main">
+                    <div id="messages-header" class="chat-header">
+                        <div class="chat-user-info">
+                            <div class="chat-user-details">
+                                <h4 id="messages-user-name">Select a conversation</h4>
+                                <span id="messages-user-email" style="color: var(--color-text-secondary); font-size: 12px;"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="messages-content" class="chat-messages">
+                        <div class="chat-placeholder">
+                            <i class="fas fa-comments"></i>
+                            <p>Select a conversation to start messaging</p>
+                        </div>
+                    </div>
+
+                    <div id="messages-input-container" class="chat-input-container" style="display: none;">
+                        <div class="chat-input-group">
+                            <input type="text" id="messages-input" class="chat-input" placeholder="Type your message...">
+                            <button class="btn btn--primary chat-send-btn" id="messages-send-btn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Chat Section -->
+
     <section id="worker-registration" class="section">
         <div class="container">
             <div class="section-header">

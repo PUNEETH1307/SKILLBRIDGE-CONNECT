@@ -2305,6 +2305,25 @@ function setupEventHandlers() {
   bindEvent('back-from-registration', 'click', () => showSection('home'));
   bindEvent('back-from-search', 'click', () => showSection('home'));
   bindEvent('back-from-profile', 'click', () => showSection('customer-search'));
+  bindEvent('back-from-about', 'click', () => showSection('home'));
+  bindEvent('back-from-messages', 'click', () => showSection('home'));
+  bindEvent('back-from-chat', 'click', () => showSection('home'));
+  
+  // Message send button
+  const messagesSendBtn = document.getElementById('messages-send-btn');
+  if (messagesSendBtn) {
+    messagesSendBtn.addEventListener('click', () => sendMessageFromSection('messages'));
+  }
+  
+  const messagesInput = document.getElementById('messages-input');
+  if (messagesInput) {
+    messagesInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessageFromSection('messages');
+      }
+    });
+  }
   
   bindEvent('search-workers-btn', 'click', handleSearch);
   bindEvent('sort-by', 'change', sortWorkers);
@@ -2378,6 +2397,22 @@ function setupEventHandlers() {
     });
   }
   
+  // Chat send button (in bookings/chat section)
+  const chatSendBtn = document.getElementById('chat-send-btn');
+  if (chatSendBtn) {
+    chatSendBtn.addEventListener('click', sendMessage);
+  }
+  
+  const chatInput = document.getElementById('chat-input');
+  if (chatInput) {
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+  
   console.log('✅ Event handlers setup complete');
 }
 
@@ -2387,10 +2422,122 @@ function bindEvent(id, event, handler) {
     element.addEventListener(event, handler);
   }
 }
+// ============= WORKER PROFILE (ABOUT SECTION) =============
+
+async function loadWorkerProfile() {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px;">Please login to view your worker profile.</p>';
+      return;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+
+    if (!data.success) {
+      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px;">Error loading profile.</p>';
+      return;
+    }
+
+    const user = data.data;
+
+    // Check if user is a worker
+    if (!user.worker_id) {
+      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px; font-size: 16px;">📝 You need to join as a worker to see your profile details here.</p>';
+      return;
+    }
+
+    // Fetch worker details
+    const workerResponse = await fetch(`${API_BASE_URL}/workers/${user.worker_id}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const workerData = await workerResponse.json();
+
+    if (!workerData.success) {
+      document.getElementById('about-content').innerHTML = '<p style="color: var(--color-text-secondary); text-align: center; padding: 20px;">Error loading worker profile.</p>';
+      return;
+    }
+
+    const worker = workerData.data;
+    const specialties = parseJSON(worker.specialties);
+    const serviceAreas = parseJSON(worker.service_areas);
+
+    let html = `
+      <div style="max-width: 900px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-active) 100%); color: var(--color-btn-primary-text); padding: 30px; border-radius: 12px; margin-bottom: 30px; text-align: center;">
+          <h1 style="margin: 0 0 10px 0; font-size: 28px;">${escapeHtml(worker.name)}</h1>
+          <p style="margin: 5px 0; font-size: 18px; opacity: 0.95;">🎯 ${escapeHtml(worker.occupation)}</p>
+          <div style="display: flex; justify-content: center; gap: 30px; margin-top: 20px; flex-wrap: wrap;">
+            <div><strong>⭐ Rating:</strong> ${worker.rating || 0}/5 (${worker.total_reviews || 0} reviews)</div>
+            <div><strong>💼 Experience:</strong> ${worker.experience} years</div>
+            <div><strong>💰 Rate:</strong> ₹${worker.hourly_rate}/hour</div>
+            ${worker.verified ? '<div><strong>✓ Verified</strong></div>' : ''}
+          </div>
+        </div>
+
+        <div style="display: grid; gap: 20px;">
+          ${worker.description ? `
+            <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border);">
+              <h3 style="color: var(--color-text); margin-top: 0;">📋 About Me</h3>
+              <p style="color: var(--color-text); line-height: 1.6; margin: 0;">${escapeHtml(worker.description)}</p>
+            </div>
+          ` : ''}
+
+          ${specialties.length > 0 ? `
+            <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border);">
+              <h3 style="color: var(--color-text); margin-top: 0;">🔧 Skills & Specialties</h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                ${specialties.map(s => `<div style="background: var(--color-bg-1); padding: 10px; border-radius: 6px; border-left: 4px solid var(--color-primary); color: var(--color-text); font-size: 14px;">${escapeHtml(s)}</div>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${serviceAreas.length > 0 ? `
+            <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border);">
+              <h3 style="color: var(--color-text); margin-top: 0;">📍 Service Areas</h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                ${serviceAreas.map(a => `<div style="background: var(--color-bg-3); padding: 10px; border-radius: 6px; border-left: 4px solid var(--color-success); color: var(--color-text); font-size: 14px;">📍 ${escapeHtml(a)}</div>`).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border: 1px solid var(--color-card-border); display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">📍 Location</p>
+              <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.location)}</p>
+            </div>
+            <div>
+              <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">⏱️ Available Hours</p>
+              <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.available_hours || 'Flexible')}</p>
+            </div>
+            <div>
+              <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">🚗 Travel Radius</p>
+              <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.travel_radius || 'Negotiable')}</p>
+            </div>
+            <div>
+              <p style="color: var(--color-text-secondary); margin: 0 0 5px 0; font-weight: bold;">📱 Phone</p>
+              <p style="color: var(--color-text); margin: 0; font-size: 16px;">${escapeHtml(worker.phone)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('about-content').innerHTML = html;
+  } catch (error) {
+    console.error('❌ Error loading worker profile:', error);
+    document.getElementById('about-content').innerHTML = '<p style="color: #f44336; padding: 20px;">Error loading profile. Please try again.</p>';
+  }
+}
+
 // ============= REAL-TIME CHAT SYSTEM =============
 
 let socket = null;
 let currentChatUserId = null;
+let currentConversationId = null;
 
 // Initialize Socket.io
 function initializeChat() {
@@ -2413,32 +2560,56 @@ function initializeChat() {
   loadConversations();
 }
 
-// Load conversations list
+// Load conversations list (for both old chat and new messages sections)
 async function loadConversations() {
   try {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
     const response = await fetch(`${API_BASE_URL}/conversations`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     const data = await response.json();
 
-    const list = document.getElementById('conversations-list');
-    if (!data.success || data.data.length === 0) {
-      list.innerHTML = '<p style="color: #999;">No conversations yet</p>';
+    // Update both conversation lists
+    const oldList = document.getElementById('chat-list');
+    const newList = document.getElementById('conversations-list');
+
+    if (!data.success || !data.data || data.data.length === 0) {
+      const emptyHtml = '<p style="color: var(--color-text-secondary); padding: 15px; text-align: center;">No conversations yet</p>';
+      if (oldList) oldList.innerHTML = emptyHtml;
+      if (newList) newList.innerHTML = emptyHtml;
       return;
     }
 
     let html = '';
     data.data.forEach(conv => {
+      const lastMsg = conv.last_message || 'No messages yet';
+      const msgTime = new Date(conv.last_message_time).toLocaleString();
+      const initials = conv.user_email.charAt(0).toUpperCase();
+      
       html += `
-        <div onclick="openChat(${conv.user_id}, '${conv.user_email}')" style="padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; hover: background: #f5f5f5;">
-          <strong>${conv.user_email}</strong>
-          <br><small style="color: #999;">${new Date(conv.last_message_time).toLocaleString()}</small>
+        <div class="conversation-item" onclick="openMessageConversation(${conv.user_id}, '${escapeHtml(conv.user_email)}', ${conv.conversation_id})" style="padding: 12px; border-bottom: 1px solid var(--color-border); cursor: pointer; transition: background 0.2s;">
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--color-primary); display: flex; align-items: center; justify-content: center; color: var(--color-btn-primary-text); font-weight: bold; flex-shrink: 0;">
+              ${initials}
+            </div>
+            <div style="flex: 1; min-width: 0;">
+              <strong style="color: var(--color-text); display: block;">${escapeHtml(conv.user_email)}</strong>
+              <small style="color: var(--color-text-secondary); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(lastMsg.substring(0, 50))}</small>
+              <small style="color: var(--color-text-secondary); font-size: 11px;">${msgTime}</small>
+            </div>
+          </div>
         </div>
       `;
     });
-    list.innerHTML = html;
+
+    if (oldList) oldList.innerHTML = html;
+    if (newList) newList.innerHTML = html;
+    
+    console.log('✅ Conversations loaded:', data.data.length);
   } catch (error) {
-    console.error('Error loading conversations:', error);
+    console.error('❌ Error loading conversations:', error);
   }
 }
 // ============= COMPLETE BOOKING WORKFLOW =============
@@ -2593,24 +2764,24 @@ async function loadWorkerBookingRequests() {
       ` : '';
 
       html += `
-        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 5px solid ${statusConfig.color}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div class="booking-card" style="border-left: 5px solid ${statusConfig.color};">
           <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
             <div style="flex: 1;">
-              <h4 style="margin: 0; color: #333;">🔔 Booking Request</h4>
-              <p style="margin: 5px 0; color: #666; font-size: 14px;">👤 ${escapeHtml(customerName)}</p>
-              <p style="margin: 5px 0; color: #666; font-size: 14px;">📧 ${escapeHtml(booking.customer_email)}</p>
-              <p style="margin: 5px 0; color: #666; font-size: 14px;">📱 ${booking.customer_phone || 'N/A'}</p>
+              <h4 class="booking-title">🔔 Booking Request</h4>
+              <p class="booking-subtitle">👤 ${escapeHtml(customerName)}</p>
+              <p class="booking-subtitle">📧 ${escapeHtml(booking.customer_email)}</p>
+              <p class="booking-subtitle">📱 ${booking.customer_phone || 'N/A'}</p>
             </div>
-            <span style="background: ${statusConfig.color}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+            <span class="booking-status" style="background: ${statusConfig.color}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
               ${statusConfig.label}
             </span>
           </div>
           
-          <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+          <div class="booking-details">
             <p style="margin: 5px 0; font-size: 14px;"><strong>📅 Date:</strong> ${bookingDate}</p>
             <p style="margin: 5px 0; font-size: 14px;"><strong>⏰ Time:</strong> ${booking.start_time} - ${booking.end_time}</p>
             <p style="margin: 5px 0; font-size: 14px;"><strong>💰 Price:</strong> ₹${booking.total_price}</p>
-            ${booking.service_description ? `<p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>📝 Details:</strong> ${escapeHtml(booking.service_description)}</p>` : ''}
+            ${booking.service_description ? `<p style="margin: 5px 0; font-size: 14px; color: inherit;"><strong>📝 Details:</strong> ${escapeHtml(booking.service_description)}</p>` : ''}
           </div>
           
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -2997,9 +3168,122 @@ async function createBooking(workerId, hourlyRate) {
 }
 
 // Open chat with user
+// ============= MESSAGES SECTION (NEW) =============
+
+async function openMessageConversation(userId, userEmail, conversationId) {
+  currentChatUserId = userId;
+  currentConversationId = conversationId;
+  
+  // Update header
+  document.getElementById('messages-user-name').textContent = userEmail;
+  document.getElementById('messages-user-email').textContent = 'Last active: Just now';
+  
+  // Show input container
+  document.getElementById('messages-input-container').style.display = 'flex';
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/messages/${userId}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+    });
+    const data = await response.json();
+
+    const messagesDiv = document.getElementById('messages-content');
+    messagesDiv.innerHTML = '';
+
+    if (data.success && data.data.length > 0) {
+      data.data.forEach(msg => {
+        const isSent = msg.sender_id == localStorage.getItem('userId');
+        displayMessageInSection(msg.message, isSent ? 'sent' : 'received', msg.created_at, 'messages');
+      });
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    } else {
+      messagesDiv.innerHTML = '<div style="text-align: center; color: var(--color-text-secondary); padding: 20px;">No messages yet. Start a conversation!</div>';
+    }
+  } catch (error) {
+    console.error('❌ Error loading messages:', error);
+    document.getElementById('messages-content').innerHTML = '<p style="color: #f44336;">Error loading messages</p>';
+  }
+}
+
+function sendMessageFromSection(sectionId) {
+  const inputId = sectionId === 'messages' ? 'messages-input' : 'message-input';
+  const input = document.getElementById(inputId);
+  const message = input.value.trim();
+
+  if (!message || !currentChatUserId) return;
+
+  sendMessageToUser(message, sectionId);
+  input.value = '';
+}
+
+async function sendMessageToUser(message, sectionId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: JSON.stringify({
+        receiver_id: currentChatUserId,
+        message: message
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      displayMessageInSection(message, 'sent', new Date(), sectionId);
+      
+      // Scroll to bottom
+      const messagesDiv = sectionId === 'messages' ? document.getElementById('messages-content') : document.getElementById('chat-messages');
+      if (messagesDiv) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      
+      // Send via socket
+      if (socket) {
+        socket.emit('send_message', {
+          to: currentChatUserId,
+          from: localStorage.getItem('userId'),
+          message: message,
+          timestamp: new Date()
+        });
+      }
+      
+      // Reload conversations
+      loadConversations();
+    }
+  } catch (error) {
+    console.error('❌ Error sending message:', error);
+  }
+}
+
+function displayMessageInSection(message, type, timestamp, sectionId) {
+  const containerId = sectionId === 'messages' ? 'messages-content' : 'chat-messages';
+  const container = document.getElementById(containerId);
+  
+  const align = type === 'sent' ? 'flex-end' : 'flex-start';
+  const bgColor = type === 'sent' ? 'var(--color-primary)' : 'var(--color-secondary)';
+  const textColor = type === 'sent' ? 'var(--color-btn-primary-text)' : 'var(--color-text)';
+  const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const msgHtml = `
+    <div style="display: flex; justify-content: ${align}; margin-bottom: 10px;">
+      <div style="max-width: 70%; padding: 10px 15px; border-radius: 15px; background: ${bgColor}; color: ${textColor};">
+        <p style="margin: 0; word-wrap: break-word;">${escapeHtml(message)}</p>
+        <small style="opacity: 0.7; font-size: 10px;">${time}</small>
+      </div>
+    </div>
+  `;
+  
+  container.innerHTML += msgHtml;
+}
+
 async function openChat(userId, userName) {
   currentChatUserId = userId;
   document.getElementById('chat-user-name').textContent = userName;
+  
+  // Show the chat input container
+  document.getElementById('chat-input-container').style.display = 'block';
   
   try {
     const response = await fetch(`${API_BASE_URL}/messages/${userId}`, {
@@ -3024,7 +3308,7 @@ async function openChat(userId, userName) {
 
 // Send message
 async function sendMessage() {
-  const input = document.getElementById('message-input');
+  const input = document.getElementById('chat-input');
   const message = input.value.trim();
 
   if (!message || !currentChatUserId) return;
@@ -3101,10 +3385,19 @@ function showSection(sectionId) {
       console.log('📅 Loading my bookings section...');
       loadBookings();
     }
+    else if (sectionId === 'messages') {
+      console.log('💬 Loading messages section...');
+      if (!socket) initializeChat();
+      loadConversations();
+    }
     else if (sectionId === 'chat') {
       console.log('💬 Loading chat section...');
       if (!socket) initializeChat();
       loadConversations();
+    }
+    else if (sectionId === 'about') {
+      console.log('👤 Loading about section...');
+      loadWorkerProfile();
     }
   } else {
     console.error('❌ Section not found:', sectionId);
