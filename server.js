@@ -368,6 +368,229 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// ============= ADMIN AUTHENTICATION =============
+
+// Admin Login
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    console.log('🔐 Admin login attempt:', username);
+
+    if (!username || !password) {
+      return res.json({ success: false, message: 'Username and password required' });
+    }
+
+    const connection = await pool.getConnection();
+    const [admins] = await connection.query('SELECT * FROM admins WHERE username = ?', [username]);
+
+    if (admins.length === 0) {
+      connection.release();
+      return res.json({ success: false, message: 'Invalid admin credentials' });
+    }
+
+    const admin = admins[0];
+    const validPassword = await bcrypt.compare(password, admin.password);
+
+    if (!validPassword) {
+      connection.release();
+      return res.json({ success: false, message: 'Invalid admin credentials' });
+    }
+
+    connection.release();
+
+    // Create token for admin
+    const token = jwt.sign(
+      { id: admin.id, username: admin.username, isAdmin: true },
+      SECRET_KEY,
+      { expiresIn: '7d' }
+    );
+
+    console.log('✅ Admin logged in:', username);
+    res.json({
+      success: true,
+      message: 'Admin login successful',
+      token: token,
+      data: { adminId: admin.id, username: admin.username, role: admin.role }
+    });
+  } catch (error) {
+    console.error('❌ Admin login error:', error);
+    res.json({ success: false, message: 'Admin login error: ' + error.message });
+  }
+});
+
+// ============= ADMIN DASHBOARD ROUTES =============
+
+// Get platform analytics
+app.get('/api/admin/analytics', authenticateToken, async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // Get total users
+    const [usersCount] = await connection.query('SELECT COUNT(*) as count FROM users');
+    
+    // Get total workers
+    const [workersCount] = await connection.query('SELECT COUNT(*) as count FROM workers');
+    
+    // Get total bookings
+    const [bookingsCount] = await connection.query('SELECT COUNT(*) as count FROM bookings');
+    
+    // Get total revenue
+    const [revenue] = await connection.query('SELECT SUM(total_amount) as total FROM commissions WHERE status = "completed"');
+    
+    // Get platform commission
+    const [platformFee] = await connection.query('SELECT SUM(commission_amount) as total FROM commissions WHERE status = "completed"');
+    
+    // Get bookings by status
+    const [bookingsByStatus] = await connection.query(
+      'SELECT status, COUNT(*) as count FROM bookings GROUP BY status'
+    );
+    
+    // Get top workers
+    const [topWorkers] = await connection.query(
+      'SELECT w.name, w.occupation, w.rating, COUNT(b.id) as booking_count FROM workers w LEFT JOIN bookings b ON w.id = b.worker_id GROUP BY w.id ORDER BY w.rating DESC LIMIT 5'
+    );
+    
+    connection.release();
+
+    res.json({
+      success: true,
+      data: {
+        totalUsers: usersCount[0].count,
+        totalWorkers: workersCount[0].count,
+        totalBookings: bookingsCount[0].count,
+        totalRevenue: revenue[0].total || 0,
+        platformCommission: platformFee[0].total || 0,
+        bookingsByStatus: bookingsByStatus,
+        topWorkers: topWorkers
+      }
+    });
+  } catch (error) {
+    console.error('❌ Analytics error:', error);
+    res.json({ success: false, message: 'Error fetching analytics: ' + error.message });
+  }
+});
+
+// Get all disputes
+app.get('/api/admin/disputes', authenticateToken, async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [disputes] = await connection.query(
+      `SELECT d.*, b.service_name, w.name as worker_name, u.email as user_email
+       FROM disputes d
+       LEFT JOIN bookings b ON d.booking_id = b.id
+       LEFT JOIN workers w ON d.worker_id = w.id
+       LEFT JOIN users u ON d.user_id = u.id
+       ORDER BY d.created_at DESC`
+    );
+    connection.release();
+
+    res.json({ success: true, data: disputes });
+  } catch (error) {
+    console.error('❌ Disputes error:', error);
+    res.json({ success: false, message: 'Error fetching disputes: ' + error.message });
+  }
+});
+
+// Resolve dispute
+app.put('/api/admin/disputes/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { resolution, status } = req.body;
+    
+    const connection = await pool.getConnection();
+    await connection.query(
+      'UPDATE disputes SET status = ?, resolution = ?, resolved_at = NOW() WHERE id = ?',
+      [status || 'resolved', resolution, id]
+    );
+    connection.release();
+
+    res.json({ success: true, message: 'Dispute resolved' });
+  } catch (error) {
+    console.error('❌ Resolve dispute error:', error);
+    res.json({ success: false, message: 'Error resolving dispute: ' + error.message });
+  }
+});
+
+// Get all reviews
+app.get('/api/admin/reviews', authenticateToken, async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [reviews] = await connection.query(
+      `SELECT r.*, w.name as worker_name, u.email as user_email
+       FROM rating r
+       LEFT JOIN workers w ON r.worker_id = w.id
+       LEFT JOIN users u ON r.user_id = u.id
+       ORDER BY r.created_at DESC`
+    );
+    connection.release();
+
+    res.json({ success: true, data: reviews });
+  } catch (error) {
+    console.error('❌ Reviews error:', error);
+    res.json({ success: false, message: 'Error fetching reviews: ' + error.message });
+  }
+});
+
+// Moderate review
+app.put('/api/admin/reviews/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approved } = req.body;
+    
+    const connection = await pool.getConnection();
+    await connection.query(
+      'UPDATE rating SET approved = ? WHERE id = ?',
+      [approved, id]
+    );
+    connection.release();
+
+    res.json({ success: true, message: 'Review moderated' });
+  } catch (error) {
+    console.error('❌ Moderate review error:', error);
+    res.json({ success: false, message: 'Error moderating review: ' + error.message });
+  }
+});
+
+// Get commission/payment tracking
+app.get('/api/admin/commissions', authenticateToken, async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [commissions] = await connection.query(
+      `SELECT c.*, w.name as worker_name, b.service_name
+       FROM commissions c
+       LEFT JOIN workers w ON c.worker_id = w.id
+       LEFT JOIN bookings b ON c.booking_id = b.id
+       ORDER BY c.created_at DESC`
+    );
+    connection.release();
+
+    res.json({ success: true, data: commissions });
+  } catch (error) {
+    console.error('❌ Commissions error:', error);
+    res.json({ success: false, message: 'Error fetching commissions: ' + error.message });
+  }
+});
+
+// Process commission payment
+app.put('/api/admin/commissions/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const connection = await pool.getConnection();
+    await connection.query(
+      'UPDATE commissions SET status = ? WHERE id = ?',
+      [status, id]
+    );
+    connection.release();
+
+    res.json({ success: true, message: 'Commission status updated' });
+  } catch (error) {
+    console.error('❌ Update commission error:', error);
+    res.json({ success: false, message: 'Error updating commission: ' + error.message });
+  }
+});
+
 // ============= WORKER ROUTES =============
 
 // CREATE WORKER PROFILE
@@ -1306,6 +1529,90 @@ app.get('/', (req, res) => {
 // Replace this:
 // app.listen(PORT, () => { ... });
 
+// Initialize admin account
+async function initializeAdmin() {
+  try {
+    const connection = await pool.getConnection();
+    
+    // Create tables if they don't exist
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS admins (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'admin',
+        permissions TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS disputes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        booking_id INT,
+        worker_id INT,
+        user_id INT,
+        description TEXT NOT NULL,
+        status VARCHAR(50) DEFAULT 'open',
+        resolution TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TIMESTAMP NULL,
+        FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS commissions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        booking_id INT,
+        worker_id INT,
+        total_amount DECIMAL(10, 2),
+        commission_percentage INT DEFAULT 10,
+        commission_amount DECIMAL(10, 2),
+        platform_fee DECIMAL(10, 2),
+        worker_payout DECIMAL(10, 2),
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE CASCADE
+      )
+    `);
+    
+    // Add approved column to rating if it doesn't exist
+    try {
+      await connection.query(`ALTER TABLE rating ADD COLUMN approved BOOLEAN DEFAULT TRUE`);
+    } catch (e) {
+      // Column might already exist
+    }
+    
+    console.log('✅ Admin tables created/verified');
+    
+    // Check if admin already exists
+    const [existing] = await connection.query('SELECT id FROM admins WHERE username = ?', ['ATMECE']);
+    
+    if (existing.length === 0) {
+      // Create default admin account
+      const hashedPassword = await bcrypt.hash('student123', 10);
+      await connection.query(
+        'INSERT INTO admins (username, password, email, role) VALUES (?, ?, ?, ?)',
+        ['ATMECE', hashedPassword, 'admin@skillbridge.com', 'admin']
+      );
+      console.log('✅ Admin account created: ATMECE / student123');
+    } else {
+      console.log('✅ Admin account already exists');
+    }
+    
+    connection.release();
+  } catch (error) {
+    console.error('⚠️ Admin initialization error:', error);
+  }
+}
+
+// Initialize admin on server start
+initializeAdmin();
+
 // With this:
 server.listen(PORT, () => {
   console.log(`
@@ -1315,6 +1622,7 @@ server.listen(PORT, () => {
 ║   🗄️  MySQL Connected                  ║
 ║   🔑 JWT Authentication Ready          ║
 ║   💬 Socket.io Real-time Chat Ready    ║
+║   👨‍💼 Admin Account: ATMECE / student123  ║
 ╚════════════════════════════════════════╝
   `);
 });

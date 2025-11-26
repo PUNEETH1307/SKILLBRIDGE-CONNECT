@@ -127,6 +127,9 @@ function checkAuthStatus() {
     console.log('✅ User logged in');
     updateUIForLoggedInUser();
   }
+  
+  // Update admin navbar
+  updateAdminNavbar();
 }
 
 function isLoggedIn() {
@@ -2299,6 +2302,7 @@ function setupEventHandlers() {
   });
   
   bindEvent('login-btn', 'click', () => showModal('login-modal'));
+  bindEvent('admin-login-btn', 'click', () => showModal('admin-login-modal'));
   bindEvent('nav-brand', 'click', () => showSection('home'));
   bindEvent('home-link', 'click', (e) => { e.preventDefault(); showSection('home'); });
   
@@ -2308,6 +2312,10 @@ function setupEventHandlers() {
   bindEvent('back-from-about', 'click', () => showSection('home'));
   bindEvent('back-from-messages', 'click', () => showSection('home'));
   bindEvent('back-from-chat', 'click', () => showSection('home'));
+
+  // Admin login form
+  bindEvent('admin-login-form', 'submit', handleAdminLogin);
+  bindEvent('admin-login-modal-close', 'click', () => closeModal('admin-login-modal'));
   
   // Message send button
   const messagesSendBtn = document.getElementById('messages-send-btn');
@@ -3469,6 +3477,288 @@ function contactWorker(workerId) {
   setTimeout(() => {
     openChat(worker.user_id, worker.name);
   }, 500);
+}
+
+// ============= ADMIN DASHBOARD =============
+
+// Admin login
+async function handleAdminLogin(e) {
+  e.preventDefault();
+  const form = e.target;
+  const username = form.username.value;
+  const password = form.password.value;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      localStorage.setItem('adminToken', data.token);
+      localStorage.setItem('adminUsername', data.data.username);
+      console.log('✅ Admin logged in');
+      closeModal('admin-login-modal');
+      showSection('admin-dashboard');
+      loadAdminStats();
+      updateAdminNavbar();
+      form.reset();
+    } else {
+      alert('❌ ' + data.message);
+    }
+  } catch (error) {
+    console.error('❌ Admin login error:', error);
+    alert('Login failed: ' + error.message);
+  }
+}
+
+// Load admin statistics
+async function loadAdminStats() {
+  try {
+    const token = localStorage.getItem('adminToken');
+    if (!token) return;
+
+    const response = await fetch(`${API_BASE_URL}/admin/analytics`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+
+    if (!data.success) return;
+
+    const stats = data.data;
+    const container = document.getElementById('admin-stats-container');
+    
+    let html = `
+      <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border-left: 4px solid #4CAF50;">
+        <div style="font-size: 28px; font-weight: bold; color: var(--color-text);">${stats.totalUsers}</div>
+        <div style="color: var(--color-text-secondary); font-size: 14px; margin-top: 5px;">👥 Total Users</div>
+      </div>
+      <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border-left: 4px solid #2196F3;">
+        <div style="font-size: 28px; font-weight: bold; color: var(--color-text);">${stats.totalWorkers}</div>
+        <div style="color: var(--color-text-secondary); font-size: 14px; margin-top: 5px;">👷 Skilled Workers</div>
+      </div>
+      <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border-left: 4px solid #FF9800;">
+        <div style="font-size: 28px; font-weight: bold; color: var(--color-text);">${stats.totalBookings}</div>
+        <div style="color: var(--color-text-secondary); font-size: 14px; margin-top: 5px;">📅 Total Bookings</div>
+      </div>
+      <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border-left: 4px solid #4CAF50;">
+        <div style="font-size: 28px; font-weight: bold; color: var(--color-text);">₹${stats.totalRevenue}</div>
+        <div style="color: var(--color-text-secondary); font-size: 14px; margin-top: 5px;">💰 Total Revenue</div>
+      </div>
+      <div style="background: var(--color-surface); padding: 20px; border-radius: 8px; border-left: 4px solid #9C27B0;">
+        <div style="font-size: 28px; font-weight: bold; color: var(--color-text);">₹${stats.platformCommission}</div>
+        <div style="color: var(--color-text-secondary); font-size: 14px; margin-top: 5px;">🏛️ Platform Commission</div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+
+    // Display top workers
+    const topWorkersList = document.getElementById('top-workers-list');
+    let topWorkersHtml = '<table style="width: 100%; border-collapse: collapse;">';
+    topWorkersHtml += '<tr style="background: var(--color-bg); border-bottom: 2px solid var(--color-border);"><th style="padding: 10px; text-align: left; color: var(--color-text);">Worker Name</th><th style="padding: 10px; text-align: left; color: var(--color-text);">Occupation</th><th style="padding: 10px; text-align: left; color: var(--color-text);">Rating</th><th style="padding: 10px; text-align: left; color: var(--color-text);">Bookings</th></tr>';
+    
+    stats.topWorkers.forEach(worker => {
+      topWorkersHtml += `<tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 10px; color: var(--color-text);">${escapeHtml(worker.name)}</td><td style="padding: 10px; color: var(--color-text-secondary);">${escapeHtml(worker.occupation)}</td><td style="padding: 10px; color: var(--color-text);">⭐ ${worker.rating}/5</td><td style="padding: 10px; color: var(--color-text);">${worker.booking_count}</td></tr>`;
+    });
+    
+    topWorkersHtml += '</table>';
+    topWorkersList.innerHTML = topWorkersHtml;
+  } catch (error) {
+    console.error('❌ Load admin stats error:', error);
+  }
+}
+
+// Switch admin tabs
+function switchAdminTab(tab) {
+  // Hide all tabs
+  document.querySelectorAll('.admin-tab-content').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.admin-tab').forEach(el => el.classList.remove('active'));
+
+  // Show selected tab
+  const tabEl = document.getElementById(tab + '-tab');
+  if (tabEl) tabEl.style.display = 'block';
+
+  // Load data
+  if (tab === 'disputes') loadDisputesList();
+  if (tab === 'reviews') loadReviewsList();
+  if (tab === 'commissions') loadCommissionsList();
+
+  // Update button styling
+  event.target.style.borderBottom = '3px solid var(--color-primary)';
+  event.target.classList.add('active');
+}
+
+// Load disputes
+async function loadDisputesList() {
+  try {
+    const token = localStorage.getItem('adminToken');
+    if (!token) return;
+
+    const response = await fetch(`${API_BASE_URL}/admin/disputes`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+
+    const list = document.getElementById('disputes-list');
+    if (!data.success || data.data.length === 0) {
+      list.innerHTML = '<p style="color: var(--color-text-secondary);">No disputes found</p>';
+      return;
+    }
+
+    let html = '';
+    data.data.forEach(dispute => {
+      html += `
+        <div style="background: var(--color-bg); padding: 15px; border-radius: 6px; border-left: 4px solid #f44336;">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+            <div>
+              <h4 style="margin: 0; color: var(--color-text);">Booking #${dispute.booking_id}</h4>
+              <p style="margin: 5px 0; color: var(--color-text-secondary); font-size: 14px;">Worker: ${escapeHtml(dispute.worker_name)}</p>
+              <p style="margin: 5px 0; color: var(--color-text-secondary); font-size: 14px;">User: ${escapeHtml(dispute.user_email)}</p>
+            </div>
+            <span style="background: ${dispute.status === 'open' ? '#f44336' : '#4CAF50'}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
+              ${dispute.status.toUpperCase()}
+            </span>
+          </div>
+          <p style="color: var(--color-text); margin: 10px 0;">${escapeHtml(dispute.description)}</p>
+          ${dispute.resolution ? `<p style="color: var(--color-text-secondary); margin: 10px 0;"><strong>Resolution:</strong> ${escapeHtml(dispute.resolution)}</p>` : ''}
+          <input type="text" placeholder="Resolution" id="resolution-${dispute.id}" style="width: 100%; padding: 8px; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-bg); color: var(--color-text); margin-top: 10px;">
+          <button onclick="resolveDispute(${dispute.id})" style="margin-top: 10px; padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">✓ Resolve</button>
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+  } catch (error) {
+    console.error('❌ Load disputes error:', error);
+  }
+}
+
+// Resolve dispute
+async function resolveDispute(disputeId) {
+  const resolution = document.getElementById(`resolution-${disputeId}`).value;
+  
+  if (!resolution) {
+    alert('Please enter resolution text');
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem('adminToken');
+    const response = await fetch(`${API_BASE_URL}/admin/disputes/${disputeId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ resolution, status: 'resolved' })
+    });
+    const data = await response.json();
+
+    if (data.success) {
+      alert('✅ Dispute resolved');
+      loadDisputesList();
+    } else {
+      alert('❌ ' + data.message);
+    }
+  } catch (error) {
+    console.error('❌ Resolve dispute error:', error);
+    alert('Error: ' + error.message);
+  }
+}
+
+// Load reviews
+async function loadReviewsList() {
+  try {
+    const token = localStorage.getItem('adminToken');
+    if (!token) return;
+
+    const response = await fetch(`${API_BASE_URL}/admin/reviews`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+
+    const list = document.getElementById('reviews-list');
+    if (!data.success || data.data.length === 0) {
+      list.innerHTML = '<p style="color: var(--color-text-secondary);">No reviews found</p>';
+      return;
+    }
+
+    let html = '';
+    data.data.forEach(review => {
+      html += `
+        <div style="background: var(--color-bg); padding: 15px; border-radius: 6px; border-left: 4px solid #FF9800;">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+            <div>
+              <h4 style="margin: 0; color: var(--color-text);">${escapeHtml(review.worker_name)}</h4>
+              <p style="margin: 5px 0; color: var(--color-text-secondary); font-size: 14px;">⭐ Rating: ${review.rating}/5</p>
+              <p style="margin: 5px 0; color: var(--color-text-secondary); font-size: 14px;">By: ${escapeHtml(review.user_email)}</p>
+            </div>
+          </div>
+          <p style="color: var(--color-text); margin: 10px 0;">${escapeHtml(review.review)}</p>
+        </div>
+      `;
+    });
+    list.innerHTML = html;
+  } catch (error) {
+    console.error('❌ Load reviews error:', error);
+  }
+}
+
+// Load commissions
+async function loadCommissionsList() {
+  try {
+    const token = localStorage.getItem('adminToken');
+    if (!token) return;
+
+    const response = await fetch(`${API_BASE_URL}/admin/commissions`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+
+    const list = document.getElementById('commissions-list');
+    if (!data.success || data.data.length === 0) {
+      list.innerHTML = '<p style="color: var(--color-text-secondary);">No commissions found</p>';
+      return;
+    }
+
+    let html = '<table style="width: 100%; border-collapse: collapse;">';
+    html += '<tr style="background: var(--color-bg); border-bottom: 2px solid var(--color-border);"><th style="padding: 10px; text-align: left; color: var(--color-text);">Worker</th><th style="padding: 10px; text-align: left; color: var(--color-text);">Amount</th><th style="padding: 10px; text-align: left; color: var(--color-text);">Commission</th><th style="padding: 10px; text-align: left; color: var(--color-text);">Payout</th><th style="padding: 10px; text-align: left; color: var(--color-text);">Status</th></tr>';
+    
+    data.data.forEach(commission => {
+      html += `<tr style="border-bottom: 1px solid var(--color-border);"><td style="padding: 10px; color: var(--color-text);">${escapeHtml(commission.worker_name)}</td><td style="padding: 10px; color: var(--color-text);">₹${commission.total_amount}</td><td style="padding: 10px; color: var(--color-text);">₹${commission.commission_amount} (${commission.commission_percentage}%)</td><td style="padding: 10px; color: var(--color-text);">₹${commission.worker_payout}</td><td style="padding: 10px;"><span style="background: ${commission.status === 'pending' ? '#FF9800' : '#4CAF50'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${commission.status.toUpperCase()}</span></td></tr>`;
+    });
+    
+    html += '</table>';
+    list.innerHTML = html;
+  } catch (error) {
+    console.error('❌ Load commissions error:', error);
+  }
+}
+
+// Logout admin
+function logoutAdmin() {
+  localStorage.removeItem('adminToken');
+  localStorage.removeItem('adminUsername');
+  updateAdminNavbar();
+  showSection('home');
+  alert('✅ Logged out');
+}
+
+// Update admin navbar
+function updateAdminNavbar() {
+  const adminBtn = document.getElementById('admin-login-btn');
+  const adminLink = document.getElementById('admin-link');
+  const isAdmin = !!localStorage.getItem('adminToken');
+
+  if (isAdmin) {
+    adminBtn.style.display = 'none';
+    adminLink.style.display = 'block';
+  } else {
+    adminBtn.style.display = 'block';
+    adminLink.style.display = 'none';
+  }
 }
 
 // ========================================
