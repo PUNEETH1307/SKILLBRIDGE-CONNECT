@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
+const https = require('https');
 
 const app = express();
 const PORT = 3000;
@@ -83,12 +84,31 @@ app.get('/api/users/me', authenticateToken, async (req, res) => {
         phone: user.phone, 
         user_type: user.user_type, 
         name: user.worker_name || null,
-        worker_id: user.worker_id || null
+        worker_id: user.worker_id || null,
+        preferred_language: user.preferred_language || 'en'
       } 
     });
   } catch (error) {
     console.error('❌ Get current user error:', error);
     res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
+// Update preferred language for current user
+app.post('/api/users/language', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { preferred_language } = req.body;
+    if (!preferred_language) return res.json({ success: false, message: 'preferred_language required' });
+
+    const connection = await pool.getConnection();
+    await connection.query('UPDATE users SET preferred_language = ? WHERE id = ?', [preferred_language, userId]);
+    connection.release();
+
+    res.json({ success: true, message: 'Preferred language updated' });
+  } catch (e) {
+    console.error('❌ Update language error:', e);
+    res.json({ success: false, message: e.message });
   }
 });
 
@@ -213,6 +233,50 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0
 });
+
+// Simple Google Translate helper using v2 REST API (requires GOOGLE_API_KEY in env)
+async function translateText(text, target, source = null) {
+  return new Promise((resolve, reject) => {
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!apiKey) return resolve(null);
+
+    const params = new URLSearchParams();
+    params.append('q', text);
+    params.append('target', target);
+    if (source) params.append('source', source);
+    params.append('format', 'text');
+
+    const options = {
+      hostname: 'translation.googleapis.com',
+      path: '/language/translate/v2?key=' + apiKey,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json && json.data && json.data.translations && json.data.translations[0]) {
+            resolve(json.data.translations[0].translatedText);
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', (e) => reject(e));
+    req.write(params.toString());
+    req.end();
+  });
+}
 
 pool.getConnection()
   .then((connection) => {
@@ -818,6 +882,7 @@ app.get('/api/ratings/:workerId/user', authenticateToken, async (req, res) => {
 // GET ALL WORKERS
 app.get('/api/workers', async (req, res) => {
   try {
+    const targetLang = req.query.lang || null;
     const { occupation, location, min_rate, max_rate, sort } = req.query;
     let query = 'SELECT * FROM workers WHERE 1=1';
     const params = [];
@@ -851,6 +916,25 @@ app.get('/api/workers', async (req, res) => {
 
     const connection = await pool.getConnection();
     const [workers] = await connection.query(query, params);
+    // If a target language requested, translate textual fields
+    if (targetLang && targetLang !== 'en' && process.env.GOOGLE_API_KEY) {
+      for (let w of workers) {
+        try {
+          if (w.description) {
+            const t = await translateText(w.description, targetLang);
+            if (t) w.description_translated = t;
+          }
+          if (w.service_areas) {
+            const areas = Array.isArray(w.service_areas) ? w.service_areas.join(', ') : String(w.service_areas || '');
+            const t2 = await translateText(areas, targetLang);
+            if (t2) w.service_areas_translated = t2;
+          }
+        } catch (e) {
+          console.error('Translate worker error:', e.message || e);
+        }
+      }
+    }
+
     connection.release();
 
     res.json({ success: true, data: workers, workers: workers });
@@ -903,15 +987,33 @@ app.get('/api/recommendations', async (req, res) => {
 // GET SINGLE WORKER
 app.get('/api/workers/:id', async (req, res) => {
   try {
+    const targetLang = req.query.lang || null;
     const connection = await pool.getConnection();
     const [workers] = await connection.query('SELECT * FROM workers WHERE id = ?', [req.params.id]);
-    connection.release();
-
     if (workers.length === 0) {
+      connection.release();
       return res.json({ success: false, message: 'Worker not found' });
     }
 
-    res.json({ success: true, data: workers[0] });
+    const worker = workers[0];
+    if (targetLang && targetLang !== 'en' && process.env.GOOGLE_API_KEY) {
+      try {
+        if (worker.description) {
+          const t = await translateText(worker.description, targetLang);
+          if (t) worker.description_translated = t;
+        }
+        if (worker.service_areas) {
+          const areas = Array.isArray(worker.service_areas) ? worker.service_areas.join(', ') : String(worker.service_areas || '');
+          const t2 = await translateText(areas, targetLang);
+          if (t2) worker.service_areas_translated = t2;
+        }
+      } catch (e) {
+        console.error('Translate single worker error:', e.message || e);
+      }
+    }
+
+    connection.release();
+    res.json({ success: true, data: worker });
   } catch (error) {
     console.error('❌ Get worker error:', error);
     res.json({ success: false, message: 'Error: ' + error.message });
@@ -1037,16 +1139,89 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
     }
 
     const connection = await pool.getConnection();
+
+    // determine sender and receiver preferred languages
+    let senderLang = 'en';
+    let receiverLang = 'en';
+    try {
+      const [srows] = await connection.query('SELECT preferred_language FROM users WHERE id = ?', [sender_id]);
+      if (srows && srows[0] && srows[0].preferred_language) senderLang = srows[0].preferred_language;
+      const [rrows] = await connection.query('SELECT preferred_language FROM users WHERE id = ?', [receiver_id]);
+      if (rrows && rrows[0] && rrows[0].preferred_language) receiverLang = rrows[0].preferred_language;
+    } catch (e) {
+      // ignore and use defaults
+    }
+
+    // build simple context: last 3 messages
+    let contextSummary = '';
+    try {
+      const [ctx] = await connection.query(
+        `SELECT message FROM messages WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY created_at DESC LIMIT 3`,
+        [sender_id, receiver_id, receiver_id, sender_id]
+      );
+      if (ctx && ctx.length) {
+        contextSummary = ctx.map(r => r.message).reverse().join('\n');
+      }
+    } catch (e) {
+      contextSummary = '';
+    }
+
+    // translate if required
+    let translated = null;
+    let source_lang = senderLang;
+    let target_lang = receiverLang;
+    try {
+      if (process.env.GOOGLE_API_KEY && receiverLang && receiverLang !== senderLang) {
+        // prepend context lightly to help preserve meaning
+        const textToTranslate = (contextSummary ? contextSummary + '\n' : '') + message;
+        const translatedResult = await translateText(textToTranslate, receiverLang);
+        // translation may include context; strip the context portion if present
+        if (translatedResult) {
+          // crude: if context present, translatedResult will contain translation of both; remove translations of context by taking last line(s)
+          translated = translatedResult;
+        }
+      }
+    } catch (e) {
+      console.error('Translation error:', e.message || e);
+      translated = null;
+    }
+
+    // Save message with translation fields
     const [result] = await connection.query(
-      'INSERT INTO messages (sender_id, receiver_id, message, created_at) VALUES (?, ?, ?, NOW())',
-      [sender_id, receiver_id, message]
+      'INSERT INTO messages (sender_id, receiver_id, message, original_message, translated_message, source_lang, target_lang, context_summary, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+      [sender_id, receiver_id, message, message, translated || null, source_lang, target_lang, contextSummary || null]
     );
+
+    // Emit socket event to receiver (if online) with translation metadata
+    const insertedId = result.insertId;
+    try {
+      const recipientSocketId = activeUsers.get(String(receiver_id));
+      const payload = {
+        id: insertedId,
+        from: sender_id,
+        message: message,
+        original_message: message,
+        translated_message: translated,
+        source_lang: source_lang,
+        target_lang: target_lang,
+        timestamp: new Date()
+      };
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit('receive_message', payload);
+      }
+      // also notify sender socket if needed
+      const senderSocketId = activeUsers.get(String(sender_id));
+      if (senderSocketId) io.to(senderSocketId).emit('message_sent', payload);
+    } catch (e) {
+      console.error('Socket emit error:', e.message || e);
+    }
+
     connection.release();
 
     res.json({
       success: true,
       message: 'Message sent',
-      data: { id: result.insertId }
+      data: { id: insertedId }
     });
   } catch (error) {
     console.error('❌ Send message error:', error);
@@ -1054,11 +1229,27 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
   }
 });
 
+// Translate helper endpoint (optional manual translate)
+app.post('/api/translate', authenticateToken, async (req, res) => {
+  try {
+    const { text, target, source } = req.body;
+    if (!text || !target) return res.json({ success: false, message: 'text and target required' });
+    if (!process.env.GOOGLE_API_KEY) return res.json({ success: false, message: 'GOOGLE_API_KEY not set' });
+    const translated = await translateText(text, target, source);
+    res.json({ success: true, data: { translated } });
+  } catch (e) {
+    console.error('Translate endpoint error:', e);
+    res.json({ success: false, message: e.message || String(e) });
+  }
+});
+
+// Get conversation
 // Get conversation
 app.get('/api/messages/:userId', authenticateToken, async (req, res) => {
   try {
     const currentUserId = req.user.id;
     const otherUserId = req.params.userId;
+    const targetLang = req.query.lang || null;
 
     const connection = await pool.getConnection();
     const [messages] = await connection.query(
@@ -1068,6 +1259,28 @@ app.get('/api/messages/:userId', authenticateToken, async (req, res) => {
        ORDER BY created_at ASC`,
       [currentUserId, otherUserId, otherUserId, currentUserId]
     );
+
+    // If a target language requested, translate messages (prefer stored translation)
+    if (targetLang && targetLang !== 'en' && process.env.GOOGLE_API_KEY) {
+      for (let m of messages) {
+        try {
+          // if message already has translation to target, use it
+          if (m.translated_message && m.target_lang === targetLang) {
+            m._display = m.translated_message;
+          } else {
+            // translate original_message if available else message
+            const sourceText = m.original_message || m.message;
+            const t = await translateText(sourceText, targetLang);
+            if (t) m._display = t;
+            else m._display = sourceText;
+          }
+        } catch (e) {
+          console.error('Translate message error:', e.message || e);
+          m._display = m.message;
+        }
+      }
+    }
+
     connection.release();
 
     res.json({ success: true, data: messages });
@@ -1174,6 +1387,7 @@ app.post('/api/bookings', authenticateToken, async (req, res) => {
 // Get customer's bookings (what customer booked)
 app.get('/api/bookings/customer', authenticateToken, async (req, res) => {
   try {
+    const targetLang = req.query.lang || null;
     const userId = req.user.id;
 
     const connection = await pool.getConnection();
@@ -1185,6 +1399,19 @@ app.get('/api/bookings/customer', authenticateToken, async (req, res) => {
        ORDER BY b.booking_date DESC, b.start_time DESC`,
       [userId]
     );
+
+    // translate descriptions if requested
+    if (targetLang && targetLang !== 'en' && process.env.GOOGLE_API_KEY) {
+      for (let b of bookings) {
+        try {
+          if (b.service_description) {
+            const t = await translateText(b.service_description, targetLang);
+            if (t) b.service_description_translated = t;
+          }
+        } catch (e) { console.error('Translate booking (customer) error:', e.message || e); }
+      }
+    }
+
     connection.release();
 
     console.log('✅ Customer bookings found:', bookings.length);
@@ -1197,24 +1424,18 @@ app.get('/api/bookings/customer', authenticateToken, async (req, res) => {
 });
 
 // Get worker's booking requests (bookings for this worker)
-// Get worker's booking requests (bookings for this worker)
-// Get worker's booking requests (bookings for this worker)
-// Get worker's booking requests (bookings for this worker)
 app.get('/api/bookings/worker', authenticateToken, async (req, res) => {
   try {
+    const targetLang = req.query.lang || null;
     const userId = req.user.id;
     console.log('👷 Fetching bookings for user:', userId);
 
     const connection = await pool.getConnection();
-    
+
     // Step 1: Get worker_id for this user
-    const [workerData] = await connection.query(
-      'SELECT id FROM workers WHERE user_id = ?',
-      [userId]
-    );
+    const [workerData] = await connection.query('SELECT id FROM workers WHERE user_id = ?', [userId]);
 
     if (!workerData || workerData.length === 0) {
-      console.log('ℹ️ No worker profile for user:', userId);
       connection.release();
       return res.json({ success: true, data: [] });
     }
@@ -1246,16 +1467,23 @@ app.get('/api/bookings/worker', authenticateToken, async (req, res) => {
       [workerId]
     );
 
+    // translate descriptions if requested
+    if (targetLang && targetLang !== 'en' && process.env.GOOGLE_API_KEY) {
+      for (let b of bookings) {
+        try {
+          if (b.service_description) {
+            const t = await translateText(b.service_description, targetLang);
+            if (t) b.service_description_translated = t;
+          }
+        } catch (e) { console.error('Translate booking (worker) error:', e.message || e); }
+      }
+    }
+
     connection.release();
 
     console.log('✅ Worker booking requests found:', bookings.length);
 
-    res.json({ 
-      success: true, 
-      data: bookings,
-      worker_id: workerId 
-    });
-
+    res.json({ success: true, data: bookings, worker_id: workerId });
   } catch (error) {
     console.error('❌ Get worker bookings error:', error);
     res.json({ success: false, message: 'Error: ' + error.message });
@@ -1385,7 +1613,7 @@ app.get('/api/bookings/user', authenticateToken, async (req, res) => {
   }
 });
 
-// Update booking status
+// Update booking status (simple update)
 app.patch('/api/bookings/:id', authenticateToken, async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -1396,46 +1624,12 @@ app.patch('/api/bookings/:id', authenticateToken, async (req, res) => {
     }
 
     const connection = await pool.getConnection();
-    await connection.query(
-      'UPDATE bookings SET status = ? WHERE id = ?',
-      [status, bookingId]
-    );
+    await connection.query('UPDATE bookings SET status = ? WHERE id = ?', [status, bookingId]);
     connection.release();
 
     res.json({ success: true, message: 'Booking updated' });
   } catch (error) {
     console.error('❌ Update booking error:', error);
-    res.json({ success: false, message: 'Error: ' + error.message });
-  }
-});
-
-
-// Get worker's certificates
-app.get('/api/certificates/:workerId', async (req, res) => {
-  try {
-    const workerId = req.params.workerId;
-
-    const connection = await pool.getConnection();
-
-    try {
-      const [certificates] = await connection.query(
-        `SELECT id, certificate_name, description, file_path, uploaded_at 
-         FROM certificates 
-         WHERE worker_id = ? 
-         ORDER BY uploaded_at DESC`,
-        [workerId]
-      );
-
-      res.json({
-        success: true,
-        data: certificates
-      });
-    } finally {
-      connection.release();
-    }
-
-  } catch (error) {
-    console.error('❌ Get certificates error:', error);
     res.json({ success: false, message: 'Error: ' + error.message });
   }
 });
@@ -1585,6 +1779,25 @@ async function initializeAdmin() {
       await connection.query(`ALTER TABLE rating ADD COLUMN approved BOOLEAN DEFAULT TRUE`);
     } catch (e) {
       // Column might already exist
+    }
+
+    // Ensure users and messages tables have translation-related columns
+    try {
+      await connection.query(`ALTER TABLE users ADD COLUMN preferred_language VARCHAR(10) DEFAULT 'en'`);
+    } catch (e) {
+      // already exists or users table missing
+    }
+
+    try {
+      await connection.query(`ALTER TABLE messages 
+        ADD COLUMN original_message TEXT NULL,
+        ADD COLUMN translated_message TEXT NULL,
+        ADD COLUMN source_lang VARCHAR(10) NULL,
+        ADD COLUMN target_lang VARCHAR(10) NULL,
+        ADD COLUMN context_summary TEXT NULL
+      `);
+    } catch (e) {
+      // columns may already exist
     }
     
     console.log('✅ Admin tables created/verified');

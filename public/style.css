@@ -1900,6 +1900,37 @@ textarea::placeholder {
   .nav-toggle {
     display: block;
   }
+
+  /* When menu is opened on mobile, show it as a vertical list */
+  .nav-menu.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--color-surface);
+    padding: var(--space-16);
+    gap: var(--space-12);
+    border-bottom: 1px solid var(--color-border);
+    z-index: 999;
+  }
+
+  .nav-menu.open .nav-link {
+    display: block;
+    padding: 12px 8px;
+    width: 100%;
+    color: var(--color-text);
+    border-radius: 6px;
+  }
+
+  .nav-menu.open .nav-btn,
+  .nav-menu.open .theme-toggle,
+  .nav-menu.open #language-select {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+  }
   
   .hero-actions {
     flex-direction: column;
