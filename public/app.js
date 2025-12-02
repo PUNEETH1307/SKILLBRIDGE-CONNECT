@@ -1532,36 +1532,7 @@ async function displayWorkerProfile(worker) {
   console.log('✅ Profile displayed');
 }
 
-// Load certificates for worker profile
-async function loadProfileCertificates(workerId) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/certificates/${workerId}`);
-    const data = await response.json();
-    
-    const container = document.getElementById(`profile-certificates-${workerId}`);
-    if (!container) return;
-
-    if (!data.success || data.data.length === 0) {
-      container.innerHTML = '<p style="color: var(--color-text-secondary);">No certificates</p>';
-      return;
-    }
-
-    let html = '';
-    data.data.forEach(cert => {
-      html += `
-        <div class="certificate-item">
-          <strong>${escapeHtml(cert.certificate_name)}</strong>
-          ${cert.description ? `<p>${escapeHtml(cert.description)}</p>` : ''}
-          <a href="${cert.file_path}" target="_blank">📥 Download PDF</a>
-        </div>
-      `;
-    });
-    
-    container.innerHTML = html;
-  } catch (error) {
-    console.error('Error loading certificates:', error);
-  }
-}
+// Duplicate certificate loader removed — consolidated implementation kept above
 
 // ============= BOOKING SYSTEM =============
 
@@ -1984,64 +1955,7 @@ async function uploadCertificatesAfterRegistration(workerId) {
   return successCount > 0;
 }
 
-// Load and display certificates in worker profile
-async function loadProfileCertificates(workerId) {
-  console.log('📄 Loading certificates for worker:', workerId);
-  
-  try {
-    const response = await fetch(`${API_BASE_URL}/certificates/${workerId}`);
-    const data = await response.json();
-    
-    console.log('📥 Certificates response:', data);
-    
-    const container = document.getElementById(`profile-certificates-${workerId}`);
-    if (!container) {
-      console.error('❌ Certificate container not found');
-      return;
-    }
-
-    if (!data.success || !data.data || data.data.length === 0) {
-      console.log('ℹ️ No certificates found for worker', workerId);
-      container.innerHTML = '<p style="color: #999; font-style: italic;">No certificates uploaded</p>';
-      return;
-    }
-
-    console.log('✅ Found', data.data.length, 'certificate(s)');
-
-    let html = '<div style="display: grid; gap: 12px;">';
-    
-    data.data.forEach(cert => {
-      const uploadDate = new Date(cert.uploaded_at).toLocaleDateString();
-      
-      html += `
-        <div style="background: white; padding: 12px; border-radius: 6px; border-left: 4px solid #4CAF50; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="flex: 1;">
-              <strong style="color: #333; font-size: 14px;">📄 ${escapeHtml(cert.certificate_name)}</strong>
-              ${cert.description ? `<p style="font-size: 12px; color: #666; margin: 5px 0 0 0;">${escapeHtml(cert.description)}</p>` : ''}
-              <small style="color: #999; font-size: 11px;">Uploaded: ${uploadDate}</small>
-            </div>
-            <a href="${cert.file_path}" target="_blank" download style="padding: 8px 12px; background: #2196F3; color: white; border-radius: 4px; text-decoration: none; font-size: 12px; white-space: nowrap;">
-              📥 Download
-            </a>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += '</div>';
-    
-    container.innerHTML = html;
-    console.log('✅ Displayed', data.data.length, 'certificate(s)');
-
-  } catch (error) {
-    console.error('❌ Error loading certificates:', error);
-    const container = document.getElementById(`profile-certificates-${workerId}`);
-    if (container) {
-      container.innerHTML = '<p style="color: #f44336;">Error loading certificates</p>';
-    }
-  }
-}
+// Duplicate certificate loader removed — consolidated implementation kept above
 
 
 async function loadCertificates(workerId = null) {

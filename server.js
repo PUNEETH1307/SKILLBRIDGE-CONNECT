@@ -1126,6 +1126,24 @@ app.post('/api/certificates', authenticateToken, upload.single('certificate_file
   }
 });
 
+// Get certificates for a worker
+app.get('/api/certificates/:workerId', async (req, res) => {
+  try {
+    const workerId = req.params.workerId;
+    const connection = await pool.getConnection();
+    const [certs] = await connection.query(
+      `SELECT id, worker_id, certificate_name, description, file_name, file_path, file_size, uploaded_at FROM certificates WHERE worker_id = ? ORDER BY uploaded_at DESC`,
+      [workerId]
+    );
+    connection.release();
+
+    res.json({ success: true, data: certs });
+  } catch (error) {
+    console.error('❌ Get certificates error:', error);
+    res.json({ success: false, message: 'Error: ' + error.message });
+  }
+});
+
 // ============= MESSAGING ROUTES =============
 
 // Send message
@@ -1619,7 +1637,8 @@ app.patch('/api/bookings/:id', authenticateToken, async (req, res) => {
     const bookingId = req.params.id;
     const { status } = req.body;
 
-    if (!['confirmed', 'completed', 'cancelled'].includes(status)) {
+    // Accept 'rejected' as a valid status as well (worker rejected the booking)
+    if (!['confirmed', 'rejected', 'completed', 'cancelled'].includes(status)) {
       return res.json({ success: false, message: 'Invalid status' });
     }
 
@@ -1798,6 +1817,13 @@ async function initializeAdmin() {
       `);
     } catch (e) {
       // columns may already exist
+    }
+
+    // Ensure bookings.status enum includes 'rejected' to match application values
+    try {
+      await connection.query("ALTER TABLE bookings MODIFY COLUMN status ENUM('pending','confirmed','completed','cancelled','rejected') DEFAULT 'pending'");
+    } catch (e) {
+      // ignore if table/column doesn't exist yet or modification not needed
     }
     
     console.log('✅ Admin tables created/verified');
