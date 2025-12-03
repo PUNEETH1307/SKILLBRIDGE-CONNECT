@@ -1019,6 +1019,151 @@ app.get('/api/workers/:id', async (req, res) => {
     res.json({ success: false, message: 'Error: ' + error.message });
   }
 });
+
+// ============= SEMANTIC SEARCH ENDPOINT =============
+// Accepts free-text query and returns ranked worker results
+app.get('/api/semantic-search', async (req, res) => {
+  try {
+    const query = (req.query.q || '').toLowerCase().trim();
+    const targetLang = req.query.lang || 'en';
+
+    if (!query || query.length < 2) {
+      return res.json({ success: false, message: 'Query too short', data: [] });
+    }
+
+    const connection = await pool.getConnection();
+    const [workers] = await connection.query('SELECT * FROM workers');
+    connection.release();
+
+    if (!workers || workers.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Parse query for occupation, location, and budget patterns
+    const queryLower = query.toLowerCase();
+    
+    // Extract budget (e.g., "under 300", "₹300", "300/hour")
+    let budgetRange = null;
+    const budgetMatch = queryLower.match(/(?:under|below|less than|upto)\s*₹?(\d{2,4})/i);
+    if (budgetMatch) {
+      const budget = parseInt(budgetMatch[1], 10);
+      budgetRange = budget;
+    }
+
+    // Score and rank workers
+    const scored = workers.map(worker => {
+      let score = 0;
+      let reasons = [];
+
+      // Keyword matching in occupation
+      if (query.includes(worker.occupation.toLowerCase())) {
+        score += 100;
+        reasons.push('occupation_match');
+      }
+
+      // Keyword matching in location
+      if (worker.location && query.includes(worker.location.toLowerCase())) {
+        score += 80;
+        reasons.push('location_match');
+      }
+
+      // Budget matching
+      if (budgetRange && worker.hourly_rate) {
+        const rate = parseInt(worker.hourly_rate, 10);
+        if (rate <= budgetRange) {
+          score += 60;
+          reasons.push('budget_match');
+        } else if (rate <= budgetRange * 1.2) {
+          score += 30;
+          reasons.push('budget_close');
+        }
+      }
+
+      // Name matching
+      if (worker.name && query.includes(worker.name.toLowerCase())) {
+        score += 120;
+        reasons.push('name_match');
+      }
+
+      // Description keyword matching
+      if (worker.description) {
+        const desc = worker.description.toLowerCase();
+        const queryWords = query.split(/\s+/).filter(w => w.length > 3);
+        queryWords.forEach(word => {
+          if (desc.includes(word)) {
+            score += 10;
+          }
+        });
+      }
+
+      // Specialty keyword matching
+      if (worker.specialties) {
+        try {
+          const specs = Array.isArray(worker.specialties) ? worker.specialties : JSON.parse(worker.specialties || '[]');
+          specs.forEach(spec => {
+            if (query.includes(spec.toLowerCase())) {
+              score += 15;
+              reasons.push('specialty_match');
+            }
+          });
+        } catch (e) {
+          // ignore parse error
+        }
+      }
+
+      // Boost highly rated workers
+      if (worker.rating >= 4.5) {
+        score += 20;
+        reasons.push('highly_rated');
+      }
+
+      // Boost experienced workers
+      if (worker.experience >= 5) {
+        score += 15;
+        reasons.push('experienced');
+      }
+
+      // Boost verified workers
+      if (worker.verified) {
+        score += 10;
+        reasons.push('verified');
+      }
+
+      return {
+        ...worker,
+        _score: score,
+        _reasons: reasons
+      };
+    }).filter(w => w._score > 0).sort((a, b) => b._score - a._score);
+
+    // Translate descriptions if needed
+    if (targetLang && targetLang !== 'en' && process.env.GOOGLE_API_KEY) {
+      for (let i = 0; i < scored.length && i < 10; i++) {
+        try {
+          if (scored[i].description) {
+            const t = await translateText(scored[i].description, targetLang);
+            if (t) scored[i].description_translated = t;
+          }
+        } catch (e) {
+          console.warn('Translation error for worker:', scored[i].id, e.message);
+        }
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      data: scored,
+      query: query,
+      budget: budgetRange,
+      count: scored.length
+    });
+
+  } catch (error) {
+    console.error('❌ Semantic search error:', error);
+    res.json({ success: false, message: 'Search error: ' + error.message, data: [] });
+  }
+});
+
 const multer = require('multer');
 
 const fs = require('fs');

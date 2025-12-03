@@ -846,7 +846,26 @@ const TRANSLATIONS = {
     'btn.accept': 'स्वीकार करें',
     'btn.reject': 'अस्वीकार करें',
     'form.name': 'नाम',
-    'form.email': 'ईमेल'
+    'form.email': 'ईमेल',
+    'assistant.greeting': 'नमस्ते! 👋 मैं SkillBridge Connect का आपका व्यक्तिगत सहायक हूँ। मैं आपकी कैसे मदद कर सकता हूँ? 🤔',
+    'assistant.help': 'SkillBridge Connect आपकी सभी कुशल सेवाओं का गंतव्य है। मैं आपको निम्नलिखित में सहायता कर सकता हूँ:',
+    'assistant.flows': 'मुख्य फ़्लोज़:',
+    'assistant.findWorkers': '• कर्मचारी खोजें: Find Workers पेज का उपयोग करें या मुझसे खोजने के लिए कहें (उदाहरण "नोएडा में प्लंबर खोजें 300 के तहत")।',
+    'assistant.filters': '• फ़िल्टर: सेवा, स्थान, बजट और सॉर्ट विकल्पों द्वारा परिणाम सीमित करें।',
+    'assistant.profiles': '• प्रोफाइल: एक वर्कर कार्ड पर देखें क्लिक करें, बारे में, विशेषताएं, प्रमाणपत्र और बुक देखें।',
+    'assistant.register': '• वर्कर के रूप में पंजीकरण करें: वर्कर के रूप में जुड़ें पर क्लिक करें और प्रमाण पत्र अपलोड करें।',
+    'assistant.bookings': '• बुकिंग्स & चैट: ग्राहक बुकिंग अनुरोध बनाते हैं; कार्यकर्ता स्वीकार/अस्वीकार कर सकते हैं।',
+    'assistant.openFindWorkers': 'वर्कर्स खोजें खोलें',
+    'assistant.registerWorker': 'वर्कर के रूप में पंजीकरण करें',
+    'assistant.showHome': 'होम दिखाएँ',
+    'assistant.noResults': 'मुझे पूरी तरह समझ नहीं आया। 🤔 मैं वर्कर खोजने, सुविधाओं को समझाने, या बुकिंग प्रबंधन में मदद कर सकता हूँ। आप क्या करना चाहते हैं?',
+    'assistant.tryAdjust': 'अपने फ़िल्टर या खोज शर्तें समायोजित करने का प्रयास करें।',
+    'assistant.searching': 'के लिए खोज रहे हैं',
+    'assistant.applied': 'मैंने आपके फ़िल्टर लागू किए।',
+    'assistant.found': 'पाया गया',
+    'assistant.results': 'परिणाम',
+    'assistant.error': 'क्षमा करें, मुझे फ़िल्टर लागू करने में परेशानी हुई। "नोएडा में प्लंबर खोजें" जैसे सरल वाक्य आजमाएं।',
+    'assistant.viewAll': 'सभी परिणाम देखें'
   },
   kn: {
     brand: 'SkillBridge Connect',
@@ -970,7 +989,26 @@ const TRANSLATIONS = {
     'btn.accept': 'ಸ್ವೀಕರಿಸಿ',
     'btn.reject': 'ನಿರಾಕರಿಸಿ',
     'form.name': 'ಹೆಸರು',
-    'form.email': 'ಇಮೇಲ್'
+    'form.email': 'ಇಮೇಲ್',
+    'assistant.greeting': 'ನಮಸ್ತೆ! 👋 ನಾನು SkillBridge Connect ನ ನಿಮ್ಮ ವೈಯಕ್ತಿಕ ಸಹಾಯಕ. ನಾನು ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ? 🤔',
+    'assistant.help': 'SkillBridge Connect ನಿಮ್ಮ ಎಲ್ಲಾ ನಿಪುಣ ಸೇವೆಗಳ ನಿಯಾಮಕ. ನಾನು ಈ ವಿಷಯಗಳಲ್ಲಿ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ:',
+    'assistant.flows': 'ಪ್ರಮುಖ ಹರಿವುಗಳು:',
+    'assistant.findWorkers': '• ಕೆಲಸಗಾರರನ್ನು ಹುಡುಕಿ: Find Workers ಪುಟವನ್ನು ಬಳಸಿ ಅಥವಾ ನನ್ನನ್ನು ಹುಡುಕಲು ಕೋರಿ।',
+    'assistant.filters': '• ಫಿಲ್ಟರ್‌ಗಳು: ಸೇವೆ, ಸ್ಥಳ, ಬಜೆಟ್ ಮತ್ತು ವಿಂಗಡಿಸು ಆಯ್ಕೆಗಳಿಂದ ಫಲಿತಾಂಶವನ್ನು ಕಿರಿದು ಮಾಡಿ।',
+    'assistant.profiles': '• ಪ್ರೊಫೈಲ್‌ಗಳು: ಕೆಲಸಗಾರ ಕಾರ್ಡ್‌ನಲ್ಲಿ ವೀಕ್ಷಿಸಿ ಕ್ಲಿಕ್ ಮಾಡಿ।',
+    'assistant.register': '• ಕೆಲಸಗಾರನಾಗಿ ಸೈನ್ ಅಪ್ ಮಾಡಿ: ಕೆಲಸಗಾರನಾಗಿ ಸೇರಿ ಮತ್ತು ಪ್ರಮಾಣಪತ್ರ ಅಪ್ಲೋಡ್ ಮಾಡಿ।',
+    'assistant.bookings': '• ಬುಕ್ಕಿಂಗ್‌ಗಳು & ಚ್ಯಾಟ್: ಗ್ರಾಹಕರು ಬುಕ್ಕಿಂಗ್ ವಿನಂತಿಗಳನ್ನು ರಚಿಸುತ್ತಾರೆ।',
+    'assistant.openFindWorkers': 'ಕೆಲಸಗಾರರನ್ನು ಹುಡುಕಿ ತೆರೆಯಿರಿ',
+    'assistant.registerWorker': 'ಕೆಲಸಗಾರನಾಗಿ ನೋಂದಾಯಿತ ಮಾಡಿ',
+    'assistant.showHome': 'ಮುಖಪುಟ ತೋರಿಸಿ',
+    'assistant.noResults': 'ನನಗೆ ಅದು ಚೆನ್ನಾಗಿ ಅರ್ಥವಾಗಲಿಲ್ಲ. 🤔 ನಾನು ಕೆಲಸಗಾರರನ್ನು ಹುಡುಕಲು, ವೈಶಿಷ್ಟ್ಯಗಳನ್ನು ವಿವರಿಸಲು ಅಥವಾ ಬುಕ್ಕಿಂಗ್ ನಿರ್ವಹಿಸಲು ಸಹಾಯ ಮಾಡಬಲ್ಲೆ. ನೀವು ಯಾವುದು ಮಾಡಲು ಬಯಸುತ್ತೀರಿ?',
+    'assistant.tryAdjust': 'ನಿಮ್ಮ ಫಿಲ್ಟರ್‌ಗಳನ್ನು ಬದಲಾಯಿಸಿ.',
+    'assistant.searching': 'ಹುಡುಕುತ್ತಿದೆ',
+    'assistant.applied': 'ನಾನು ನಿಮ್ಮ ಫಿಲ್ಟರ್‌ಗಳನ್ನು ಅನ್ವಯ ಮಾಡಿದೆ।',
+    'assistant.found': 'ಕಂಡುಬಂದ',
+    'assistant.results': 'ಫಲಿತಾಂಶ',
+    'assistant.error': 'ಕ್ಷಮಿಸಿ, ನನಗೆ ಆ ಫಿಲ್ಟರ್ ಅನ್ವಯ ಮಾಡಲು ಸಮಸ್ಯೆ ಉಂಟಾಯಿತು.',
+    'assistant.viewAll': 'ಎಲ್ಲಾ ಫಲಿತಾಂಶಗಳನ್ನು ವೀಕ್ಷಿಸಿ'
   },
   ta: {
     brand: 'SkillBridge Connect',
@@ -1094,7 +1132,49 @@ const TRANSLATIONS = {
     'btn.accept': 'ஏற்றுக்கொள்ளவும்',
     'btn.reject': 'நிராகரிக்கவும்',
     'form.name': 'பெயர்',
-    'form.email': 'மின்னஞ்சல்'
+    'form.email': 'மின்னஞ்சல்',
+    'assistant.greeting': 'வணக்கம்! 👋 நான் SkillBridge Connect இன் உங்கள் தனிப்பட்ட உதவியாளர். நான் உங்களுக்கு எவ்வாறு உதவ முடியும்? 🤔',
+    'assistant.help': 'SkillBridge Connect உங்கள் அனைத்து திறமையான சேவைகளின் இலக்கு. நான் இந்த விஷயங்களில் உதவி செய்ய முடியும்:',
+    'assistant.flows': 'முக்கிய பாய்வுகள்:',
+    'assistant.findWorkers': '• தொழிலாளர்களைக் கண்டறிக: தொழிலாளர்களைக் கண்டறியவைப்பு பக்கத்தைப் பயன்படுத்தவும் அல்லது தேடக் கேளுங்கள்.',
+    'assistant.filters': '• வடிப்பான்கள்: சேவை, இடம், பட்ஜெட் மூலம் இறுக்கவசூ.',
+    'assistant.profiles': '• சுயவிவரங்கள்: தொழிலாளர் அட்டையில் பார்க்க கிளிக் செய்யவும்.',
+    'assistant.register': '• தொழிலாளிறளாளராக பதிவுசெய்யுங்கள்: பணியாளர் சேரவும் மற்றும் சான்றிதழ்களை பதிவேற்றவும்.',
+    'assistant.bookings': '• முன்பதிவுகள் & சேவை: வாடிக்கையாளர்கள் முன்பதிவு கோரிக்கைகளை உருவாக்குகின்றனர்.',
+    'assistant.openFindWorkers': 'தொழிலாளர்களை கண்டறியவது திறந்த',
+    'assistant.registerWorker': 'தொழிலாளிராக பதிவு செய்யுங்கள்',
+    'assistant.showHome': 'முகப்பு காட்டு',
+    'assistant.noResults': 'I didn\'t understand. 🤔 I can help with finding workers, explaining features, or managing bookings. What would you like to do?',
+    'assistant.tryAdjust': 'உங்கள் வடிப்பான்களை சரிசெய்யவும்.',
+    'assistant.searching': 'தேடுகிறது',
+    'assistant.applied': 'நான் உங்கள் வடிப்பான்களை பயன்படுத்தினேன்.',
+    'assistant.found': 'கண்டெത்தியது',
+    'assistant.results': 'முடிவுகள்',
+    'assistant.error': 'மன்னிக்கவும், அந்த வடிப்பைப் பயன்படுத்த எனக்கு பிரச்சிறல் ஏற்பட்டது.',
+    'assistant.viewAll': 'அனைத்து முடிவுகளைக் காணவும்'
+  },
+  en: {
+    'assistant.greeting': 'Hey! 👋 I\'m your SkillBridge Connect assistant. How can I help you today? 🤔',
+    'assistant.help': 'I can help you with:\n• Finding skilled workers\n• Managing bookings\n• Registering as a worker\n• Using all SkillBridge features',
+    'assistant.flows': 'Here\'s what I can do:',
+    'assistant.findWorkers': '• Find Workers: Search for skilled professionals in your area.',
+    'assistant.filters': '• Filters: Narrow results by Service, Location, Budget and Rating.',
+    'assistant.profiles': '• Profiles: View worker details, certificates, ratings and book services.',
+    'assistant.register': '• Register as Worker: Join our platform and showcase your skills.',
+    'assistant.bookings': '• Bookings & Chat: Create bookings and communicate with workers.',
+    'assistant.openFindWorkers': 'Open Find Workers',
+    'assistant.registerWorker': 'Register as Worker',
+    'assistant.showHome': 'Show Home',
+    'assistant.noResults': 'I didn\'t quite catch that. 🤔 I can help with finding workers, explaining features, or managing bookings. What would you like to do?',
+    'assistant.tryAdjust': 'Try adjusting your filters or search terms.',
+    'assistant.searching': 'Searching for',
+    'assistant.applied': 'I applied your filters.',
+    'assistant.found': 'Found',
+    'assistant.results': 'result',
+    'assistant.error': 'Sorry, I had trouble applying that filter. Try simpler phrases like "Find plumber in Noida".',
+    'assistant.viewAll': 'View All Results',
+    'assistant.bookingHelp': 'Booking Management:\n• Create Booking: From a worker\'s profile, fill date, time, duration and details, then click Book Now.\n• View Bookings: Go to \'My Bookings\' to see all your booking requests.\n• Check Status: Pending (waiting for worker response), Confirmed (accepted), or Completed.\n• Contact Worker: Use Messages to chat with the worker about your booking.',
+    'assistant.viewBookings': 'View My Bookings'
   }
   ,
   // (no-op) trailing placeholder
@@ -1321,7 +1401,7 @@ function createWorkerCard(worker) {
         </div>
         <div class="worker-title" style="flex: 1; margin-left: 15px;">
           <h3 style="margin: 0; font-size: 18px; color: #333;">${escapeHtml(worker.name)}</h3>
-          <p style="margin: 5px 0; color: #666; font-size: 14px;">${escapeHtml(worker.occupation)}</p>
+          <p style="margin: 5px 0; color: #d4a574; font-size: 14px; font-weight: bold;">${escapeHtml(worker.occupation)}</p>
           ${worker.verified ? '<span style="color: #4CAF50; font-size: 12px; font-weight: bold;">✓ Verified</span>' : ''}
         </div>
       </div>
@@ -4335,8 +4415,10 @@ function initAiChat() {
     }
   });
 
-  // initial greeting
-  appendAiMessage('assistant', 'Hi — I can help find workers. Try: "Find plumber in Noida under 300"');
+  // initial greeting (localized)
+  appendAiMessage('assistant', t('assistant.greeting', 'Hey! 👋 I\'m your SkillBridge Connect assistant. How can I help you today? 🤔'));
+  appendAiMessage('assistant', t('assistant.help', 'I can help you with:\n• Finding skilled workers\n• Managing your bookings\n• Registering as a worker\n• And much more! Just ask! 😊'));
+  appendAiMessage('assistant', 'Try asking: "Find electrician in Noida under 300" or "How to use the app?"', []);
 }
 
 function appendAiMessage(role, text, actions) {
@@ -4398,6 +4480,13 @@ function handleAiAction(action) {
           showSection('customer-search');
         }
         break;
+      case 'open_profile':
+        if (action.payload) {
+          const workerId = action.payload;
+          viewWorkerProfile(workerId);
+          showSection('worker-profile');
+        }
+        break;
       case 'open_profile_by_name':
         if (action.payload) {
           const name = action.payload.toLowerCase().trim();
@@ -4429,18 +4518,32 @@ async function parseUserQueryAndTriggerFilters(query) {
     if (q.includes(hk)) {
       return {
         reply: (
-          'SkillBridge Connect is a marketplace that helps customers find, book and chat with skilled local workers.\n\n' +
-          'Key flows:\n' +
-          '• Find Workers: Use the Find Workers page or ask me to search (e.g. "Find plumber in Noida under 300").\n' +
-          '• Filters: Narrow results by Service, Location, Budget and Sort options.\n' +
-          '• Profiles: Click View on a worker card to see about, specialties, certificates and book.\n' +
-          '• Register as Worker: Click Join as Worker to create a profile and upload certificates.\n' +
-          '• Bookings & Chat: Customers create booking requests; workers can Accept/Reject requests and chat via Messages.'
+          t('assistant.help', 'SkillBridge Connect is a marketplace that helps customers find, book and chat with skilled local workers.') + '\n\n' +
+          t('assistant.flows', 'Key flows:') + '\n' +
+          t('assistant.findWorkers', '• Find Workers: Use the Find Workers page or ask me to search.') + '\n' +
+          t('assistant.filters', '• Filters: Narrow results by Service, Location, Budget and Sort options.') + '\n' +
+          t('assistant.profiles', '• Profiles: Click View on a worker card to see about, specialties, certificates and book.') + '\n' +
+          t('assistant.register', '• Register as Worker: Click Join as Worker to create a profile and upload certificates.') + '\n' +
+          t('assistant.bookings', '• Bookings & Chat: Customers create booking requests; workers can Accept/Reject requests.')
         ),
         actions: [
-          { label: 'Open Find Workers', type: 'open_section', payload: 'customer-search' },
-          { label: 'Register as Worker', type: 'open_section', payload: 'worker-registration' },
-          { label: 'Show Home', type: 'open_section', payload: 'home' }
+          { label: t('assistant.openFindWorkers', 'Open Find Workers'), type: 'open_section', payload: 'customer-search' },
+          { label: t('assistant.registerWorker', 'Register as Worker'), type: 'open_section', payload: 'worker-registration' },
+          { label: t('assistant.showHome', 'Show Home'), type: 'open_section', payload: 'home' }
+        ]
+      };
+    }
+  }
+
+  // Booking intent recognition: "booking", "book", "manage booking", etc.
+  const bookingKeywords = ['booking', 'book', 'reserve', 'schedule', 'appointment', 'manage booking', 'my bookings', 'view bookings', 'how to book'];
+  for (const bk of bookingKeywords) {
+    if (q.includes(bk)) {
+      return {
+        reply: t('assistant.bookingHelp', 'Booking Management:\n• Create Booking: From a worker\'s profile, fill date, time, duration and details, then click Book Now.\n• View Bookings: Go to \'My Bookings\' to see all your booking requests.\n• Check Status: Pending (waiting for worker response), Confirmed (accepted), or Completed.\n• Contact Worker: Use Messages to chat with the worker about your booking.'),
+        actions: [
+          { label: t('assistant.viewBookings', 'View My Bookings'), type: 'open_section', payload: 'my-bookings' },
+          { label: t('assistant.openFindWorkers', 'Find Workers'), type: 'open_section', payload: 'customer-search' }
         ]
       };
     }
@@ -4456,11 +4559,41 @@ async function parseUserQueryAndTriggerFilters(query) {
       searchWorkers(nameQuery);
       showSection('customer-search');
       const count = Array.isArray(filteredWorkers) ? filteredWorkers.length : 0;
+      if (count > 0) {
+        return {
+          reply: `Searching for "${nameQuery}" — found ${count} result${count !== 1 ? 's' : ''}.`,
+          actions: [
+            { label: `Open profile for ${nameQuery}`, type: 'open_profile_by_name', payload: nameQuery },
+            { label: 'View All Results', type: 'open_section', payload: 'customer-search' }
+          ]
+        };
+      }
+
+      // If no results from local keyword search, try server-side semantic search
+      try {
+        const resp = await fetch(`${API_BASE_URL}/semantic-search?q=${encodeURIComponent(nameQuery)}&lang=${localStorage.getItem('preferredLang')||'en'}`);
+        const data = await resp.json();
+        if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+          // Use semantic results as filteredWorkers
+          filteredWorkers = data.data;
+          displayAllWorkers();
+          updateResultsCount();
+          showSection('customer-search');
+          return {
+            reply: `I used semantic search and found ${data.data.length} result${data.data.length !== 1 ? 's' : ''} for "${nameQuery}".`,
+            actions: [
+              { label: `Open ${data.data[0].name}`, type: 'open_profile', payload: data.data[0].id },
+              { label: 'View All Results', type: 'open_section', payload: 'customer-search' }
+            ]
+          };
+        }
+      } catch (se) {
+        console.warn('Semantic search error (name):', se);
+      }
+
       return {
         reply: `Searching for "${nameQuery}" — found ${count} result${count !== 1 ? 's' : ''}.`,
-        actions: [
-          { label: `Open profile for ${nameQuery}`, type: 'open_profile_by_name', payload: nameQuery }
-        ]
+        actions: [ { label: `Open profile for ${nameQuery}`, type: 'open_profile_by_name', payload: nameQuery } ]
       };
     } catch (e) {
       console.error('AI chat error on name search:', e);
@@ -4476,8 +4609,46 @@ async function parseUserQueryAndTriggerFilters(query) {
 
   // Try to extract location
   let location = null;
+  // 1) Check against predefined locations list
   for (const loc of appData.locationsList) {
     if (q.includes(loc.toLowerCase())) { location = loc; break; }
+  }
+
+  // 2) If not found, try to match user input against worker.location values (helps with neighbourhoods like "jp nagar")
+  if (!location && Array.isArray(allWorkersData) && allWorkersData.length > 0) {
+    const qNormalized = q.replace(/[,\.]/g, '').toLowerCase();
+    const qTokens = qNormalized.split(/\s+/).filter(Boolean);
+
+    // try exact substring match first
+    for (const w of allWorkersData) {
+      if (!w || !w.location) continue;
+      const wloc = String(w.location).toLowerCase();
+      if (wloc.includes(qNormalized)) { location = w.location; break; }
+    }
+
+    // then try token-based matches (require token length > 2 to avoid generic words)
+    if (!location) {
+      for (const w of allWorkersData) {
+        if (!w || !w.location) continue;
+        const wloc = String(w.location).toLowerCase();
+        for (const tkn of qTokens) {
+          if (tkn.length <= 2) continue;
+          if (wloc.includes(tkn)) { location = w.location; break; }
+        }
+        if (location) break;
+      }
+    }
+  }
+
+  // 3) Final fallback: fuzzy-check parts of predefined locations (matches if any significant word matches)
+  if (!location) {
+    for (const loc of appData.locationsList) {
+      const parts = loc.toLowerCase().split(/\s+/).filter(p => p.length > 2);
+      for (const p of parts) {
+        if (q.includes(p)) { location = loc; break; }
+      }
+      if (location) break;
+    }
   }
 
   // Try to extract budget (looking for "under", "below", or per hour explicit)
@@ -4489,9 +4660,30 @@ async function parseUserQueryAndTriggerFilters(query) {
     if (m) budget = parseInt(m[1], 10);
   }
 
-  // If no clear search intent, respond with a small help message
+  // If no clear search intent, attempt a semantic search on the server before falling back
   if (!occupation && !location && !budget) {
-    return 'I can help find workers or explain how to use the app. Try: "Find electrician in Noida under 300" or "How to use the app?"';
+    try {
+      const resp = await fetch(`${API_BASE_URL}/semantic-search?q=${encodeURIComponent(query)}&lang=${localStorage.getItem('preferredLang')||'en'}`);
+      const data = await resp.json();
+      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+        // Show semantic results
+        filteredWorkers = data.data;
+        displayAllWorkers();
+        updateResultsCount();
+        showSection('customer-search');
+        return {
+          reply: `I used semantic search and found ${data.data.length} result${data.data.length !== 1 ? 's' : ''} for "${query}".`,
+          actions: [
+            { label: `Open ${data.data[0].name}`, type: 'open_profile', payload: data.data[0].id },
+            { label: 'View All Results', type: 'open_section', payload: 'customer-search' }
+          ]
+        };
+      }
+    } catch (se) {
+      console.warn('Semantic search error (general):', se);
+    }
+
+    return t('assistant.noResults', 'I didn\'t quite catch that. 🤔 I can help with:\n• Finding workers\n• Explaining features\n• Managing bookings\n\nWhat would you like to do?');
   }
 
   // Apply filters programmatically
@@ -4533,11 +4725,35 @@ async function parseUserQueryAndTriggerFilters(query) {
 
     // Return a friendly assistant reply including result count if available
     const count = (Array.isArray(filteredWorkers) ? filteredWorkers.length : 0);
-    return `I applied your filters.${occupation ? ' Occupation: ' + occupation + '.' : ''}${location ? ' Location: ' + location + '.' : ''}${budget ? ' Budget: ₹' + budget + ' (approx).' : ''} Found ${count} result${count !== 1 ? 's' : ''}.`;
+    const reply = `${t('assistant.applied', 'I applied your filters.')}.${occupation ? ' Occupation: ' + occupation + '.' : ''}${location ? ' Location: ' + location + '.' : ''}${budget ? ' Budget: ₹' + budget + ' (approx).' : ''} ${t('assistant.found', 'Found')} ${count} ${t('assistant.results', 'result' + (count !== 1 ? 's' : ''))}.`;
+    
+    // Build actions: if we have results, offer to open the first one
+    const actions = [];
+    if (count > 0 && Array.isArray(filteredWorkers) && filteredWorkers[0]) {
+      const firstWorker = filteredWorkers[0];
+      actions.push({
+        label: `Open ${firstWorker.name}`,
+        type: 'open_profile',
+        payload: firstWorker.id
+      });
+    }
+    
+    if (count > 0) {
+      actions.push({
+        label: t('assistant.viewAll', 'View All Results'),
+        type: 'open_section',
+        payload: 'customer-search'
+      });
+    }
+    
+    return {
+      reply: reply,
+      actions: actions
+    };
 
   } catch (e) {
     console.error('AI chat error applying filters:', e);
-    return 'Sorry, I had trouble applying that filter. Try simpler phrases like "Find plumber in Noida".';
+    return t('assistant.error', 'Sorry, I had trouble applying that filter. Try simpler phrases like "Find plumber in Noida".');
   }
 }
 
