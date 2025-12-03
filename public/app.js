@@ -4287,4 +4287,271 @@ function bookWorker(workerId) {
 // APP LOADED
 // ========================================
 
+// ================= AI CHATBOT INTEGRATION =================
+function initAiChat() {
+  const chat = document.getElementById('ai-chat');
+  const header = document.getElementById('ai-chat-header');
+  const toggle = document.getElementById('ai-chat-toggle');
+  const sendBtn = document.getElementById('ai-chat-send');
+  const input = document.getElementById('ai-chat-input');
+
+  if (!chat || !header || !sendBtn || !input) return;
+
+  // Toggle collapsed state
+  header.addEventListener('click', () => {
+    chat.classList.toggle('collapsed');
+    // focus input when opened
+    if (!chat.classList.contains('collapsed')) {
+      setTimeout(() => input.focus(), 200);
+    }
+  });
+
+  // Send button
+  sendBtn.addEventListener('click', () => {
+    const q = input.value.trim();
+    if (!q) return;
+    appendAiMessage('user', q);
+    input.value = '';
+    // Process query
+    setTimeout(async () => {
+      const result = await parseUserQueryAndTriggerFilters(q);
+      // result may be string or object { reply, actions }
+      if (!result) return;
+      if (typeof result === 'string') {
+        appendAiMessage('assistant', result);
+      } else if (typeof result === 'object') {
+        appendAiMessage('assistant', result.reply || '', result.actions || []);
+      } else {
+        appendAiMessage('assistant', String(result));
+      }
+    }, 200);
+  });
+
+  // Enter to send
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+
+  // initial greeting
+  appendAiMessage('assistant', 'Hi — I can help find workers. Try: "Find plumber in Noida under 300"');
+}
+
+function appendAiMessage(role, text, actions) {
+  const container = document.getElementById('ai-chat-messages');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'ai-message ' + (role === 'user' ? 'user-message' : 'assistant-message');
+
+  const avatar = document.createElement('div');
+  avatar.className = 'ai-avatar';
+  avatar.textContent = role === 'user' ? 'U' : 'A';
+
+  const content = document.createElement('div');
+  content.className = 'ai-message-content';
+  // Preserve newlines
+  content.textContent = text;
+
+  el.appendChild(avatar);
+  el.appendChild(content);
+
+  // If actions provided, render them as small buttons the user can click
+  if (Array.isArray(actions) && actions.length > 0) {
+    const actionsWrap = document.createElement('div');
+    actionsWrap.style.display = 'flex';
+    actionsWrap.style.flexWrap = 'wrap';
+    actionsWrap.style.gap = '6px';
+    actionsWrap.style.marginTop = '8px';
+
+    actions.forEach((act, idx) => {
+      const b = document.createElement('button');
+      b.className = 'btn btn--outline';
+      b.style.padding = '6px 8px';
+      b.style.fontSize = '12px';
+      b.textContent = act.label || `Action ${idx+1}`;
+      b.addEventListener('click', () => handleAiAction(act));
+      actionsWrap.appendChild(b);
+    });
+
+    el.appendChild(actionsWrap);
+  }
+
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
+// Handle action button clicks from assistant messages
+function handleAiAction(action) {
+  if (!action || !action.type) return;
+  try {
+    switch (action.type) {
+      case 'open_section':
+        if (action.payload) showSection(action.payload);
+        break;
+      case 'run_search':
+        if (action.payload) {
+          const term = action.payload;
+          const searchInput = document.getElementById('search-input'); if (searchInput) searchInput.value = term;
+          searchWorkers(term);
+          showSection('customer-search');
+        }
+        break;
+      case 'open_profile_by_name':
+        if (action.payload) {
+          const name = action.payload.toLowerCase().trim();
+          const worker = allWorkersData.find(w => (w.name || '').toLowerCase() === name || (w.name || '').toLowerCase().includes(name));
+          if (worker) {
+            viewWorkerProfile(worker.id);
+            showSection('worker-profile');
+          } else {
+            // fallback: run search
+            searchWorkers(action.payload);
+            showSection('customer-search');
+          }
+        }
+        break;
+      default:
+        console.warn('Unknown AI action:', action);
+    }
+  } catch (e) {
+    console.error('Error handling AI action:', e);
+  }
+}
+
+async function parseUserQueryAndTriggerFilters(query) {
+  const q = (query || '').toLowerCase().trim();
+
+  // Help / usage intent (also handle general 'about' queries)
+  const helpKeywords = ['how to', 'how do i', 'help', 'usage', 'what can you', 'how use', 'how to use', 'tell me about this application', 'tell me about'];
+  for (const hk of helpKeywords) {
+    if (q.includes(hk)) {
+      return {
+        reply: (
+          'SkillBridge Connect is a marketplace that helps customers find, book and chat with skilled local workers.\n\n' +
+          'Key flows:\n' +
+          '• Find Workers: Use the Find Workers page or ask me to search (e.g. "Find plumber in Noida under 300").\n' +
+          '• Filters: Narrow results by Service, Location, Budget and Sort options.\n' +
+          '• Profiles: Click View on a worker card to see about, specialties, certificates and book.\n' +
+          '• Register as Worker: Click Join as Worker to create a profile and upload certificates.\n' +
+          '• Bookings & Chat: Customers create booking requests; workers can Accept/Reject requests and chat via Messages.'
+        ),
+        actions: [
+          { label: 'Open Find Workers', type: 'open_section', payload: 'customer-search' },
+          { label: 'Register as Worker', type: 'open_section', payload: 'worker-registration' },
+          { label: 'Show Home', type: 'open_section', payload: 'home' }
+        ]
+      };
+    }
+  }
+
+  // Name-based search: "find worker giri" or "find giri"
+  const nameMatch = q.match(/(?:find|show|search for)\s+(?:worker\s+)?([a-z0-9 .'-]{2,60})/i);
+  if (nameMatch) {
+    const nameQuery = nameMatch[1].trim();
+    // Apply name search using existing searchWorkers
+    const searchInput = document.getElementById('search-input'); if (searchInput) searchInput.value = nameQuery;
+    try {
+      searchWorkers(nameQuery);
+      showSection('customer-search');
+      const count = Array.isArray(filteredWorkers) ? filteredWorkers.length : 0;
+      return {
+        reply: `Searching for "${nameQuery}" — found ${count} result${count !== 1 ? 's' : ''}.`,
+        actions: [
+          { label: `Open profile for ${nameQuery}`, type: 'open_profile_by_name', payload: nameQuery }
+        ]
+      };
+    } catch (e) {
+      console.error('AI chat error on name search:', e);
+      return 'Sorry, I could not complete the name search. Try a shorter name or use Find Workers page.';
+    }
+  }
+
+  // Try to extract occupation
+  let occupation = null;
+  for (const occ of appData.occupationsList) {
+    if (q.includes(occ.toLowerCase())) { occupation = occ; break; }
+  }
+
+  // Try to extract location
+  let location = null;
+  for (const loc of appData.locationsList) {
+    if (q.includes(loc.toLowerCase())) { location = loc; break; }
+  }
+
+  // Try to extract budget (looking for "under", "below", or per hour explicit)
+  let budget = null;
+  let m = q.match(/(?:under|below|less than)\s*₹?(\d{2,4})/);
+  if (m) budget = parseInt(m[1], 10);
+  if (!budget) {
+    m = q.match(/₹?(\d{2,4})\s*(?:\/hour|per hour|per hr|hour|hr)/);
+    if (m) budget = parseInt(m[1], 10);
+  }
+
+  // If no clear search intent, respond with a small help message
+  if (!occupation && !location && !budget) {
+    return 'I can help find workers or explain how to use the app. Try: "Find electrician in Noida under 300" or "How to use the app?"';
+  }
+
+  // Apply filters programmatically
+  try {
+    // reset search-input if no name used
+    const searchInput = document.getElementById('search-input'); if (searchInput) searchInput.value = '';
+
+    if (occupation) {
+      const occSelect = document.getElementById('search-occupation');
+      if (occSelect) {
+        occSelect.value = occupation;
+        if (typeof filterWorkersByOccupation === 'function') filterWorkersByOccupation(occupation);
+      }
+    }
+
+    if (location) {
+      const locSelect = document.getElementById('search-location');
+      if (locSelect) {
+        locSelect.value = location;
+        if (typeof filterWorkersByLocation === 'function') filterWorkersByLocation(location);
+      }
+    }
+
+    if (budget) {
+      const budgetOpt = mapBudgetToOption(budget);
+      const budSelect = document.getElementById('search-budget');
+      if (budSelect && budgetOpt) {
+        budSelect.value = budgetOpt;
+        if (typeof handleBudgetFilter === 'function') handleBudgetFilter(budgetOpt);
+      }
+    }
+
+    // Navigate to search results
+    showSection('customer-search');
+
+    // Refresh workers display (existing functions will use filteredWorkers)
+    if (typeof displayAllWorkers === 'function') displayAllWorkers();
+    if (typeof updateResultsCount === 'function') updateResultsCount();
+
+    // Return a friendly assistant reply including result count if available
+    const count = (Array.isArray(filteredWorkers) ? filteredWorkers.length : 0);
+    return `I applied your filters.${occupation ? ' Occupation: ' + occupation + '.' : ''}${location ? ' Location: ' + location + '.' : ''}${budget ? ' Budget: ₹' + budget + ' (approx).' : ''} Found ${count} result${count !== 1 ? 's' : ''}.`;
+
+  } catch (e) {
+    console.error('AI chat error applying filters:', e);
+    return 'Sorry, I had trouble applying that filter. Try simpler phrases like "Find plumber in Noida".';
+  }
+}
+
+function mapBudgetToOption(budget) {
+  if (!budget) return '';
+  if (budget <= 200) return '0-200';
+  if (budget <= 300) return '200-300';
+  if (budget <= 500) return '300-500';
+  return '500';
+}
+
+// Initialize AI chat when DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  try { initAiChat(); } catch (e) { console.warn('AI chat init failed', e); }
+});
+
 console.log('✅ SkillBridge Connect fully loaded and ready!');
