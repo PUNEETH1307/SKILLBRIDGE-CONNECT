@@ -46,7 +46,7 @@
 <!-- MY BOOKINGS Section -->
 <section id="my-bookings" class="section">
   <div class="container">
-    <h2 class="section-title">📅 My Bookings & Requests</h2>
+    <h2 class="section-title" id="my-bookings-title">📅 My Bookings & Requests</h2>
     
     <div style="margin-bottom: 30px;">
       <h3>🔔 Booking Requests I Received (As Worker)</h3>
@@ -79,7 +79,7 @@
 <!-- MY SERVICES (Worker's confirmed bookings) -->
 <section id="my-services" class="section">
     <div class="container">
-        <h2 class="section-title">My Services (Confirmed Bookings)</h2>
+        <h2 class="section-title" id="my-services-title">My Services (Confirmed Bookings)</h2>
         <div id="worker-services-list" style="display: grid; gap: 15px;"></div>
     </div>
 </section>
@@ -156,23 +156,54 @@
 </div>
 
 <!-- FEEDBACK Modal -->
-<div id="feedback-modal" class="modal hidden" style="display: none;">
-    <div class="modal-content" style="max-width: 520px; padding: 20px;">
-        <span class="close" onclick="closeModal('feedback-modal')" style="cursor: pointer; float: right; font-size: 28px; font-weight: bold;">&times;</span>
-        <h2 style="margin-top: 0;">Give Feedback</h2>
-        <div id="feedback-modal-body">
-            <div style="margin: 10px 0; font-size: 28px;" id="feedback-stars">☆ ☆ ☆ ☆ ☆</div>
-            <div style="margin: 8px 0;">
-                <textarea id="feedback-text" placeholder="Share your feedback about the service..." style="width:100%; min-height:100px; padding:10px; border:1px solid #ddd; border-radius:6px;"></textarea>
-            </div>
-            <div style="display:flex; gap:8px; margin-top:12px;">
-                <button class="btn btn--primary" onclick="submitFeedback()">Submit Feedback</button>
-                <button class="btn" onclick="closeModal('feedback-modal')">Cancel</button>
-            </div>
-            <p style="font-size:12px; color:#666; margin-top:10px;">Feedback can only be submitted after the worker accepts your booking (confirmed).</p>
-        </div>
+<!-- Feedback Modal -->
+<!-- Feedback Modal -->
+<!-- Feedback Modal -->
+<div id="feedback-modal" class="modal hidden">
+  <div class="modal-backdrop" onclick="closeModal('feedback-modal')"></div>
+  <div class="modal-content" style="max-width: 500px; animation: slideIn 0.3s ease;">
+    <div class="modal-header">
+      <h3>⭐ Give Feedback for <span id="feedback-worker-name" style="color: #FF9800;"></span></h3>
+      <button class="modal-close" onclick="closeModal('feedback-modal')" type="button">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
+    <div class="modal-body" style="padding: 20px;">
+      <form id="feedback-form" onsubmit="submitFeedback(event); return false;">
+        <input type="hidden" id="feedback-booking-id" value="">
+        
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 600;">⭐ Feedback Rating (1-5 stars) <span style="color: red;">*</span></label>
+          <select id="feedback-rating" class="form-control" required style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%; font-size: 14px;">
+            <option value="5" selected>⭐⭐⭐⭐⭐ Excellent (5)</option>
+            <option value="4">⭐⭐⭐⭐ Very Good (4)</option>
+            <option value="3">⭐⭐⭐ Good (3)</option>
+            <option value="2">⭐⭐ Fair (2)</option>
+            <option value="1">⭐ Poor (1)</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label class="form-label" style="display: block; margin-bottom: 8px; font-weight: 600;">💬 Feedback Description <span style="color: red;">* (Required)</span></label>
+          <textarea id="feedback-comment" class="form-control" rows="4" placeholder="Please describe your experience with this worker (minimum 3 characters)..." required minlength="3" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%; font-family: inherit; font-size: 14px;"></textarea>
+          <small style="color: #f44336; font-weight: 500;">⚠️ Description is required (minimum 3 characters)</small>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button type="button" onclick="closeModal('feedback-modal')" class="btn btn--secondary btn--full-width" style="flex: 1;">
+            ❌ Cancel
+          </button>
+          <button type="submit" class="btn btn--primary btn--full-width" style="flex: 1; font-weight: bold;">
+            📤 Submit Feedback
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
+
+
+
 
     <!-- Homepage Section -->
     <section id="home" class="section active">
@@ -254,7 +285,7 @@
                 <button class="back-btn" id="back-from-about">
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
-                <h2 class="section-title">My Profile</h2>
+                <h2 class="section-title" id="my-profile-title">My Profile</h2>
             </div>
             <div id="about-content" style="background: var(--color-surface); border-radius: 12px; padding: 30px; border: 1px solid var(--color-card-border);">
                 <p style="color: var(--color-text-secondary); text-align: center;">📝 You need to join as a worker to see your profile details here.</p>
@@ -269,7 +300,7 @@
                 <button class="back-btn" id="back-from-messages">
                     <i class="fas fa-arrow-left"></i> Back
                 </button>
-                <h2 class="section-title">💬 Messages</h2>
+                <h2 class="section-title" id="messages-title">💬 Messages</h2>
             </div>
 
             <div class="chat-container">

@@ -1904,6 +1904,34 @@ textarea::placeholder {
 .assistant-message .ai-message-content {
   border-bottom-left-radius: 4px;
 }
+/* Feedback Modal Animation */
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 2px 16px rgba(255, 152, 0, 0.8);
+  }
+}
+
+.feedback-modal-open {
+  animation: slideIn 0.3s ease;
+}
+
+#feedback-modal .modal-content {
+  animation: slideIn 0.3s ease;
+}
 
 /* Action buttons styling */
 .ai-message > div:last-child {

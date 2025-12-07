@@ -56,6 +56,174 @@ const authenticateToken = (req, res, next) => {
     next();
   });
 };
+// Submit feedback for a booking
+// Submit feedback for a booking
+app.post('/api/bookings/:bookingId/feedback', authenticateToken, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    let { rating, comment } = req.body;
+    const userId = req.user.id;
+
+    console.log('📝 Feedback submission attempt:', { 
+      bookingId, 
+      userId, 
+      rating,
+      ratingType: typeof rating,
+      ratingParsed: parseInt(rating)
+    });
+
+    // ✅ Validate rating - STRICT TYPE CHECKING
+    let ratingInt = parseInt(rating);
+    console.log('⚠️ Rating parsing: input =', rating, ', parsed =', ratingInt, ', isNaN =', isNaN(ratingInt));
+    
+    if (isNaN(ratingInt)) {
+      return res.json({ 
+        success: false, 
+        message: 'Rating must be a valid number. Received: ' + rating 
+      });
+    }
+    
+    if (ratingInt < 1 || ratingInt > 5) {
+      return res.json({ 
+        success: false, 
+        message: 'Rating must be between 1 and 5. You provided: ' + ratingInt 
+      });
+    }
+
+    // ✅ Validate comment
+    if (!comment || !comment.trim() || comment.trim().length < 3) {
+      return res.json({ 
+        success: false, 
+        message: 'Comment must be at least 3 characters' 
+      });
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+      // Verify this booking belongs to the customer (don't check status yet)
+      const [booking] = await connection.query(
+        `SELECT b.id, b.worker_id, b.status, b.feedback_given 
+         FROM bookings b 
+         WHERE b.id = ? AND b.user_id = ?`,
+        [bookingId, userId]
+      );
+
+      console.log('🔍 Booking query result:', booking);
+
+      if (!booking || booking.length === 0) {
+        connection.release();
+        return res.json({ 
+          success: false, 
+          message: 'Booking not found or unauthorized' 
+        });
+      }
+
+      const bookingData = booking[0];
+      console.log('✅ Booking found:', { 
+        id: bookingData.id, 
+        status: bookingData.status, 
+        feedback_given: bookingData.feedback_given 
+      });
+
+      // Check if booking is confirmed
+      if (bookingData.status !== 'confirmed') {
+        connection.release();
+        return res.json({ 
+          success: false, 
+          message: 'Only confirmed bookings can receive feedback. Current status: ' + bookingData.status 
+        });
+      }
+
+      // Check if feedback already given
+      if (bookingData.feedback_given) {
+        connection.release();
+        return res.json({ 
+          success: false, 
+          message: 'Feedback already given for this booking' 
+        });
+      }
+
+      const workerId = bookingData.worker_id;
+
+      console.log('🚀 Inserting feedback:', { 
+        worker_id: workerId, 
+        user_id: userId, 
+        rating: ratingInt, 
+        comment: comment.trim() 
+      });
+
+      // Insert feedback into rating table
+      await connection.query(
+        `INSERT INTO rating (worker_id, user_id, rating, review, created_at) 
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON DUPLICATE KEY UPDATE 
+           rating = VALUES(rating), 
+           review = VALUES(review),
+           created_at = CURRENT_TIMESTAMP`,
+        [workerId, userId, ratingInt, comment.trim()]
+      );
+
+      console.log('✅ Feedback inserted into rating table');
+
+      // Mark feedback as given on booking
+      await connection.query(
+        'UPDATE bookings SET feedback_given = 1 WHERE id = ?',
+        [bookingId]
+      );
+
+      console.log('✅ Booking marked with feedback_given = 1');
+
+      // Update worker's average rating and review count
+      const [ratingStats] = await connection.query(
+        `SELECT 
+          AVG(rating) as avg_rating, 
+          COUNT(*) as reviews_count 
+         FROM rating 
+         WHERE worker_id = ?`,
+        [workerId]
+      );
+
+      console.log('📊 Rating stats:', ratingStats);
+
+      if (ratingStats && ratingStats.length > 0 && ratingStats[0].avg_rating) {
+        const avgRating = parseFloat(ratingStats[0].avg_rating).toFixed(2);
+        const reviewCount = ratingStats[0].reviews_count || 0;
+
+        await connection.query(
+          `UPDATE workers 
+           SET rating = ?, reviews_count = ? 
+           WHERE id = ?`,
+          [avgRating, reviewCount, workerId]
+        );
+
+        console.log('✅ Worker rating updated - Avg:', avgRating, 'Count:', reviewCount);
+      }
+
+      connection.release();
+
+      res.json({ 
+        success: true, 
+        message: 'Feedback submitted successfully',
+        data: { bookingId, workerId, rating: ratingInt }
+      });
+
+    } catch (innerError) {
+      console.error('❌ Inner error:', innerError);
+      connection.release();
+      throw innerError;
+    }
+
+  } catch (error) {
+    console.error('❌ Error submitting feedback:', error);
+    res.json({ 
+      success: false, 
+      message: error.message || 'Error submitting feedback' 
+    });
+  }
+});
+
+
 
 // Get current user profile
 app.get('/api/users/me', authenticateToken, async (req, res) => {
@@ -1042,6 +1210,11 @@ app.get('/api/semantic-search', async (req, res) => {
     // Parse query for occupation, location, and budget patterns
     const queryLower = query.toLowerCase();
     
+    // Check for 'top rated' or 'best rated' queries
+    const isTopRatedQuery = queryLower.includes('top rated') || queryLower.includes('best rated') || 
+                           queryLower.includes('highest rated') || queryLower.includes('top worker') ||
+                           queryLower.includes('best worker');
+    
     // Extract budget (e.g., "under 300", "₹300", "300/hour")
     let budgetRange = null;
     const budgetMatch = queryLower.match(/(?:under|below|less than|upto)\s*₹?(\d{2,4})/i);
@@ -1050,8 +1223,15 @@ app.get('/api/semantic-search', async (req, res) => {
       budgetRange = budget;
     }
 
+    // Filter workers for top rated queries - only include those with rating > 0
+    let workersToScore = workers;
+    if (isTopRatedQuery) {
+      workersToScore = workers.filter(w => parseFloat(w.rating || 0) > 0);
+      console.log(`🎯 Top rated query detected. Filtering ${workersToScore.length} workers with rating > 0`);
+    }
+
     // Score and rank workers
-    const scored = workers.map(worker => {
+    const scored = workersToScore.map(worker => {
       let score = 0;
       let reasons = [];
 
@@ -1112,7 +1292,12 @@ app.get('/api/semantic-search', async (req, res) => {
       }
 
       // Boost highly rated workers
-      if (worker.rating >= 4.5) {
+      const workerRating = parseFloat(worker.rating || 0);
+      if (isTopRatedQuery) {
+        // For top rated queries, rating is the primary factor
+        score += workerRating * 100; // 5.0 rating = 500 points, 4.0 = 400 points
+        reasons.push('rating_priority');
+      } else if (workerRating >= 4.5) {
         score += 20;
         reasons.push('highly_rated');
       }

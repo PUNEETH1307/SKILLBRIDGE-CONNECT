@@ -729,6 +729,7 @@ const TRANSLATIONS = {
     'nav.home': 'होम',
     'nav.about': 'परिचय',
     'nav.services': 'सेवाएँ',
+      'profile.myProfile': 'मेरी प्रोफ़ाइल',
     'nav.messages': 'संदेश',
     'nav.myBookings': 'मेरी बुकिंग्स',
     'btn.joinWorker': 'वर्कर के रूप में जुड़ें',
@@ -872,6 +873,7 @@ const TRANSLATIONS = {
     'nav.home': 'ಮುಖಪುಟ',
     'nav.about': 'ಬಗ್ಗೆ',
     'nav.services': 'ಸೇವೆಗಳು',
+      'profile.myProfile': 'ನನ್ನ ಪ್ರೊಫೈಲ್',
     'nav.messages': 'ಸಂದೇಶಗಳು',
     'nav.myBookings': 'ನನ್ನ ಬುಕ್ಕಿಂಗ್‌ಗಳು',
     'btn.joinWorker': 'ಕೆಲಸಗಾರನಾಗಿ ಸೇರಿ',
@@ -1015,6 +1017,7 @@ const TRANSLATIONS = {
     'nav.home': 'முகப்பு',
     'nav.about': 'பற்றி',
     'nav.services': 'சேவைகள்',
+      'profile.myProfile': 'என் சுயவிவரம்',
     'nav.messages': 'செய்திகள்',
     'nav.myBookings': 'என் முன்பதிவுகள்',
     'btn.joinWorker': 'வேலைநபராக சேரவும்',
@@ -1193,49 +1196,55 @@ function t(key, fallback) {
 }
 
 function applyTranslations(lang) {
-  if (!lang || lang === 'en') return;
-  const map = TRANSLATIONS[lang];
-  if (!map) return;
+  const map = TRANSLATIONS[lang] || {};
 
   // Brand
   const brand = document.querySelector('.brand-text');
-  if (brand && map.brand) brand.textContent = map.brand;
+  if (brand) brand.textContent = map.brand || 'SkillBridge Connect';
 
   // Nav items
-  const homeLink = document.getElementById('home-link'); if (homeLink && map['nav.home']) homeLink.textContent = map['nav.home'];
-  const aboutLink = document.getElementById('about-link'); if (aboutLink && map['nav.about']) aboutLink.textContent = map['nav.about'];
-  const servicesLink = document.getElementById('services-link'); if (servicesLink && map['nav.services']) servicesLink.textContent = map['nav.services'];
-  const adminLink = document.getElementById('admin-link'); if (adminLink && map['nav.admin']) adminLink.textContent = map['nav.admin'];
-  const messagesLink = document.querySelector('a[href="#messages"]'); if (messagesLink && map['nav.messages']) messagesLink.textContent = map['nav.messages'];
-  const myBookingsLink = document.querySelector('a[href="#my-bookings"]'); if (myBookingsLink && map['nav.myBookings']) myBookingsLink.textContent = map['nav.myBookings'];
+  const homeLink = document.getElementById('home-link'); if (homeLink) homeLink.textContent = map['nav.home'] || 'Home';
+  const aboutLink = document.getElementById('about-link'); if (aboutLink) aboutLink.textContent = map['nav.about'] || 'About';
+  const servicesLink = document.getElementById('services-link'); if (servicesLink) servicesLink.textContent = map['nav.services'] || 'Services';
+  const adminLink = document.getElementById('admin-link'); if (adminLink) adminLink.textContent = map['nav.admin'] || 'Admin';
+  const myProfileTitle = document.getElementById('my-profile-title'); if (myProfileTitle) myProfileTitle.textContent = map['profile.myProfile'] || 'My Profile';
+  const myBookingsTitle = document.getElementById('my-bookings-title'); if (myBookingsTitle) myBookingsTitle.textContent = map['section.myBookingsTitle'] || 'My Bookings & Requests';
+  const myServicesTitle = document.getElementById('my-services-title'); if (myServicesTitle) myServicesTitle.textContent = map['section.myServicesTitle'] || 'My Services (Confirmed Bookings)';
+  const messagesTitle = document.getElementById('messages-title'); if (messagesTitle) messagesTitle.textContent = map['section.messagesTitle'] || 'Messages';
+  const messagesLink = document.querySelector('a[href="#messages"]'); if (messagesLink) messagesLink.textContent = map['nav.messages'] || 'Messages';
+  const myBookingsLink = document.querySelector('a[href="#my-bookings"]'); if (myBookingsLink) myBookingsLink.textContent = map['nav.myBookings'] || 'My Bookings';
 
   // Buttons
-  const joinBtn = document.getElementById('join-worker-btn'); if (joinBtn && map['btn.joinWorker']) joinBtn.innerHTML = `<i class="fas fa-user-plus"></i> ${map['btn.joinWorker']}`;
-  const findBtn = document.getElementById('find-workers-btn'); if (findBtn && map['btn.findWorkers']) findBtn.innerHTML = `<i class="fas fa-search"></i> ${map['btn.findWorkers']}`;
+  const joinBtn = document.getElementById('join-worker-btn'); if (joinBtn) joinBtn.innerHTML = `<i class="fas fa-user-plus"></i> ${map['btn.joinWorker'] || 'Join as Worker'}`;
+  const findBtn = document.getElementById('find-workers-btn'); if (findBtn) findBtn.innerHTML = `<i class="fas fa-search"></i> ${map['btn.findWorkers'] || 'Find Workers'}`;
 
   // Hero
-  const heroTitle = document.querySelector('.hero-title'); if (heroTitle && map['hero.title']) heroTitle.textContent = map['hero.title'];
-  const heroSubtitle = document.querySelector('.hero-subtitle'); if (heroSubtitle && map['hero.subtitle']) heroSubtitle.textContent = map['hero.subtitle'];
+  const heroTitle = document.querySelector('.hero-title'); if (heroTitle) heroTitle.textContent = map['hero.title'] || 'Connect with Skilled Workers in Your Area';
+  const heroSubtitle = document.querySelector('.hero-subtitle'); if (heroSubtitle) heroSubtitle.textContent = map['hero.subtitle'] || 'Find trusted carpenters, plumbers, electricians, and more. Get quality work done by verified professionals.';
 
   // Stats labels (assumes order)
   const statLabels = document.querySelectorAll('.stat-label');
   if (statLabels && statLabels.length >= 3) {
-    if (map['stats.workers']) statLabels[0].textContent = map['stats.workers'];
-    if (map['stats.jobs']) statLabels[1].textContent = map['stats.jobs'];
-    if (map['stats.rating']) statLabels[2].textContent = map['stats.rating'];
+    statLabels[0].textContent = map['stats.workers'] || 'Skilled Workers';
+    statLabels[1].textContent = map['stats.jobs'] || 'Jobs Completed';
+    statLabels[2].textContent = map['stats.rating'] || 'Average Rating';
   }
 
   // Features
-  const featuresTitle = document.querySelector('.features-section .section-title'); if (featuresTitle && map['features.title']) featuresTitle.textContent = map['features.title'];
+  const featuresTitle = document.querySelector('.features-section .section-title'); if (featuresTitle) featuresTitle.textContent = map['features.title'] || 'Why Choose SkillBridge Connect?';
   const featureCards = document.querySelectorAll('.features-grid .feature-card');
   if (featureCards && featureCards.length >= 4) {
+    const defaults = [
+      {title: 'Verified Workers', desc: 'All workers are verified for your safety and peace of mind.'},
+      {title: 'Quality Assured', desc: 'Customer reviews help you choose the best professionals.'},
+      {title: 'Quick Booking', desc: 'Find and book services in minutes.'},
+      {title: 'Fair Pricing', desc: 'Transparent rates with no hidden fees.'}
+    ];
     for (let i = 0; i < 4; i++) {
-      const t = map[`feature.${i+1}.title`];
-      const d = map[`feature.${i+1}.desc`];
       const h3 = featureCards[i].querySelector('h3');
       const p = featureCards[i].querySelector('p');
-      if (h3 && t) h3.textContent = t;
-      if (p && d) p.textContent = d;
+      if (h3) h3.textContent = map[`feature.${i+1}.title`] || defaults[i].title;
+      if (p) p.textContent = map[`feature.${i+1}.desc`] || defaults[i].desc;
     }
   }
 
@@ -1391,7 +1400,21 @@ function createWorkerCard(worker) {
   }
 
   const rating = parseFloat(worker.rating) || 0;
-  const reviews = parseInt(worker.total_reviews) || 0;
+  const reviewsCount = parseInt(worker.reviews_count) || 0;
+
+  // Generate star display
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.5;
+  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+  let starsHTML = '';
+  if (fullStars > 0) starsHTML += '⭐'.repeat(fullStars);
+  if (hasHalfStar) starsHTML += '⭐';
+  if (emptyStars > 0) starsHTML += '☆'.repeat(emptyStars);
+  
+  // For 0 rating, show all empty stars
+  if (rating === 0) {
+    starsHTML = '☆☆☆☆☆';
+  }
 
   return `
     <div class="worker-card" data-worker-id="${worker.id}">
@@ -1401,12 +1424,21 @@ function createWorkerCard(worker) {
         </div>
         <div class="worker-title" style="flex: 1; margin-left: 15px;">
           <h3 style="margin: 0; font-size: 18px; color: #333;">${escapeHtml(worker.name)}</h3>
-          <p style="margin: 5px 0; color: #d4a574; font-size: 14px; font-weight: bold;">${escapeHtml(worker.occupation)}</p>
+          <p style="margin: 5px 0; color: #00897B; font-size: 15px; font-weight: 600;">${escapeHtml(worker.occupation)}</p>
+          <div style="margin: 5px 0; font-size: 14px;">
+            ${reviewsCount > 0 ? `
+              <span style="color: #F57C00; font-weight: bold;">${rating.toFixed(1)}</span>
+              <span style="color: #F57C00;">${starsHTML}</span>
+              <span style="color: #666; font-size: 12px;">(${reviewsCount} ${reviewsCount === 1 ? 'review' : 'reviews'})</span>
+            ` : `
+              <span style="color: #FFA726; font-weight: bold;">0.0</span>
+              <span style="color: #FFA726;">${starsHTML}</span>
+              <span style="color: #fff; background: #00897B; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">(No reviews yet - Be the first!)</span>
+            `}
+          </div>
           ${worker.verified ? '<span style="color: #4CAF50; font-size: 12px; font-weight: bold;">✓ Verified</span>' : ''}
         </div>
       </div>
-
-      <!-- Ratings hidden from public listing to prevent unverified ratings -->
 
       <div class="worker-details" style="font-size: 13px; margin: 12px 0; line-height: 1.8; color: #555;">
           <p style="margin: 6px 0;"><strong>📍 ${t('label.location','Location:')}</strong> ${escapeHtml(worker.location)}</p>
@@ -1457,6 +1489,22 @@ async function displayWorkerProfile(worker) {
   const specialties = parseJSON(worker.specialties);
   const serviceAreas = parseJSON(worker.service_areas);
   
+  // Calculate rating display
+  const rating = parseFloat(worker.rating) || 0;
+  const reviewsCount = parseInt(worker.reviews_count) || 0;
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.5;
+  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+  let starsHTML = '';
+  if (fullStars > 0) starsHTML += '⭐'.repeat(fullStars);
+  if (hasHalfStar) starsHTML += '⭐';
+  if (emptyStars > 0) starsHTML += '☆'.repeat(emptyStars);
+  
+  // For 0 rating, show all empty stars
+  if (rating === 0) {
+    starsHTML = '☆☆☆☆☆';
+  }
+  
   // Check if user already rated this worker
   let userRating = null;
   if (authToken) {
@@ -1484,6 +1532,19 @@ async function displayWorkerProfile(worker) {
           <div class="profile-header-info">
             <h1>${escapeHtml(worker.name)}</h1>
             <p class="profile-header-occupation">${escapeHtml(worker.occupation)}</p>
+            ${reviewsCount > 0 ? `
+              <div style="margin: 10px 0; padding: 10px; background: #FFF3E0; border-radius: 8px; display: inline-block;">
+                <span style="color: #F57C00; font-size: 24px; font-weight: bold;">${rating.toFixed(1)}</span>
+                <span style="color: #F57C00; font-size: 20px; margin: 0 8px;">${starsHTML}</span>
+                <span style="color: #666; font-size: 14px;">Based on ${reviewsCount} ${reviewsCount === 1 ? 'review' : 'reviews'}</span>
+              </div>
+            ` : `
+              <div style="margin: 10px 0; padding: 10px; background: #00897B; border-radius: 8px; display: inline-block;">
+                <span style="color: #FFA726; font-size: 24px; font-weight: bold;">0.0</span>
+                <span style="color: #FFA726; font-size: 20px; margin: 0 8px;">${starsHTML}</span>
+                <span style="color: #fff; font-size: 14px; font-weight: 600;">No reviews yet - Be the first!</span>
+              </div>
+            `}
             <div class="profile-stats">
               <div class="profile-stat-item">💼 ${worker.experience}y experience</div>
               <div class="profile-stat-item">💰 ₹${worker.hourly_rate}/hr</div>
@@ -1682,20 +1743,25 @@ async function loadMyBookings() {
         cancelled: '#f44336'
       };
 
+      const workerName = booking.worker_name || 'Worker';
       const actionButtonHtml = (booking.status === 'confirmed' && !booking.feedback_given) ? `
           <div style="margin-top:12px; display:flex; gap:8px;">
-            <button onclick="openFeedbackModal(${booking.id}, ${booking.worker_id})" style="padding:10px 14px; background:#ff9800; color:white; border:none; border-radius:6px; cursor:pointer;">💬 Give Feedback</button>
+            <button onclick="openFeedbackModal(${booking.id}, '${workerName.replace(/'/g, "\\'")})" style="padding:10px 14px; background:#ff9800; color:white; border:none; border-radius:6px; cursor:pointer;">💬 Give Feedback</button>
+          </div>
+        ` : booking.feedback_given ? `
+          <div style="margin-top:12px;">
+            <span style="padding:10px 14px; background:#4CAF50; color:white; border-radius:6px; display:inline-block;">✅ Feedback Given</span>
           </div>
         ` : '';
 
       html += `
-        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid ${statusColors[booking.status]}; margin-bottom: 15px;">
-          <h4 style="margin: 0 0 10px 0;">${booking.worker_name} - ${booking.occupation}</h4>
-          <p style="margin: 5px 0;"><strong>Date:</strong> ${new Date(booking.booking_date).toLocaleDateString()}</p>
-          <p style="margin: 5px 0;"><strong>Time:</strong> ${booking.start_time} - ${booking.end_time}</p>
-          <p style="margin: 5px 0;"><strong>Price:</strong> ₹${booking.total_price}</p>
-          <p style="margin: 5px 0;"><strong>Status:</strong> <span style="background: ${statusColors[booking.status]}; color: white; padding: 3px 10px; border-radius: 3px; font-size: 12px;">${booking.status.toUpperCase()}</span></p>
-          ${booking.service_description ? `<p style="margin: 10px 0 0 0; color: #666;">${booking.service_description}</p>` : ''}
+        <div style="background: var(--color-surface, white); padding: 20px; border-radius: 8px; border-left: 4px solid ${statusColors[booking.status]}; margin-bottom: 15px; color: var(--color-text, #333);">
+          <h4 style="margin: 0 0 10px 0; color: var(--color-text, #333);">${booking.worker_name} - ${booking.occupation}</h4>
+          <p style="margin: 5px 0; color: var(--color-text, #333);"><strong>Date:</strong> ${new Date(booking.booking_date).toLocaleDateString()}</p>
+          <p style="margin: 5px 0; color: var(--color-text, #333);"><strong>Time:</strong> ${booking.start_time} - ${booking.end_time}</p>
+          <p style="margin: 5px 0; color: var(--color-text, #333);"><strong>Price:</strong> ₹${booking.total_price}</p>
+          <p style="margin: 5px 0; color: var(--color-text, #333);"><strong>Status:</strong> <span style="background: ${statusColors[booking.status]}; color: white; padding: 3px 10px; border-radius: 3px; font-size: 12px;">${booking.status.toUpperCase()}</span></p>
+          ${booking.service_description ? `<p style="margin: 10px 0 0 0; color: var(--color-text-secondary, #666);">${booking.service_description}</p>` : ''}
           ${actionButtonHtml}
         </div>
       `;
@@ -3276,22 +3342,22 @@ async function loadCustomerBookings() {
       const workerEmail = booking.worker_email || t('profile.noEmail','No email');
 
       html += `
-        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 5px solid ${statusConfig.color}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="background: var(--color-surface, white); padding: 20px; border-radius: 8px; border-left: 5px solid ${statusConfig.color}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
           <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
             <div style="flex: 1;">
-              <h4 style="margin: 0; color: #333;">${escapeHtml(workerName)} - ${escapeHtml(booking.occupation || t('booking.service','Service'))}</h4>
-              <p style="margin: 5px 0; color: #666; font-size: 14px;">📧 ${escapeHtml(workerEmail)}</p>
+              <h4 style="margin: 0; color: var(--color-text, #333);">${escapeHtml(workerName)} - ${escapeHtml(booking.occupation || t('booking.service','Service'))}</h4>
+              <p style="margin: 5px 0; color: var(--color-text-secondary, #666); font-size: 14px;">📧 ${escapeHtml(workerEmail)}</p>
             </div>
             <span style="background: ${statusConfig.color}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold;">
               ${statusConfig.label}
             </span>
           </div>
           
-          <div style="background: #f5f5f5; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
-            <p style="margin: 5px 0; font-size: 14px;"><strong>📅 ${t('booking.date','Date')}:</strong> ${bookingDate}</p>
-            <p style="margin: 5px 0; font-size: 14px;"><strong>⏰ ${t('booking.time','Time')}:</strong> ${booking.start_time || t('booking.na','N/A')} - ${booking.end_time || t('booking.na','N/A')}</p>
-            <p style="margin: 5px 0; font-size: 14px;"><strong>💰 ${t('booking.price','Price')}:</strong> ₹${booking.total_price || 0}</p>
-            ${booking.service_description ? `<p style="margin: 5px 0; font-size: 14px; color: #666;"><strong>📝 ${t('booking.details','Details')}:</strong> ${escapeHtml(booking.service_description)}</p>` : ''}
+          <div style="background: var(--color-background, #f5f5f5); padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+            <p style="margin: 5px 0; font-size: 14px; color: var(--color-text, #333);"><strong>📅 ${t('booking.date','Date')}:</strong> ${bookingDate}</p>
+            <p style="margin: 5px 0; font-size: 14px; color: var(--color-text, #333);"><strong>⏰ ${t('booking.time','Time')}:</strong> ${booking.start_time || t('booking.na','N/A')} - ${booking.end_time || t('booking.na','N/A')}</p>
+            <p style="margin: 5px 0; font-size: 14px; color: var(--color-text, #333);"><strong>💰 ${t('booking.price','Price')}:</strong> ₹${booking.total_price || 0}</p>
+            ${booking.service_description ? `<p style="margin: 5px 0; font-size: 14px; color: var(--color-text-secondary, #666);"><strong>📝 ${t('booking.details','Details')}:</strong> ${escapeHtml(booking.service_description)}</p>` : ''}
           </div>
           
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -3301,6 +3367,15 @@ async function loadCustomerBookings() {
             <button onclick="openChatWithWorker(${booking.worker_user_id}, '${escapeHtml(workerName)}')" style="flex: 1; min-width: 120px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">
               💬 ${t('btn.chat','Chat')}
             </button>
+            ${booking.status === 'confirmed' && !booking.feedback_given ? `
+              <button onclick="openFeedbackModal(${booking.id}, '${escapeHtml(workerName)}')" style="flex: 1; min-width: 120px; padding: 10px; background: #FF9800; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; animation: pulse 2s infinite;">
+                ⭐ ${t('btn.giveFeedback','Give Feedback')}
+              </button>
+            ` : booking.feedback_given ? `
+              <button disabled style="flex: 1; min-width: 120px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: not-allowed; opacity: 0.7;">
+                ✓ ${t('btn.feedbackGiven','Feedback Given')}
+              </button>
+            ` : ''}
             ${booking.status === 'pending' ? `<button onclick="cancelBooking(${booking.id})" style="flex: 1; min-width: 120px; padding: 10px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">❌ ${t('btn.cancel','Cancel')}</button>` : ''}
           </div>
         </div>
@@ -3317,6 +3392,54 @@ async function loadCustomerBookings() {
     }
   }
 }
+// ============= FEEDBACK FUNCTIONS =============
+
+// Open feedback modal
+
+// ============= FEEDBACK FUNCTIONS =============
+
+// Open feedback modal
+// Open feedback modal
+function openFeedbackModal(bookingId, workerName) {
+  console.log('📝 Opening feedback modal for booking:', bookingId, 'Worker:', workerName);
+  
+  // Get the select element
+  const ratingSelect = document.getElementById('feedback-rating');
+  const commentBox = document.getElementById('feedback-comment');
+  const bookingIdField = document.getElementById('feedback-booking-id');
+  
+  // Set values
+  bookingIdField.value = bookingId;
+  document.getElementById('feedback-worker-name').textContent = workerName;
+  
+  // Set default rating
+  ratingSelect.value = '4'; // Default to "Very Good"
+  
+  console.log('✅ Select element value set to:', ratingSelect.value);
+  console.log('✅ Select element type:', typeof ratingSelect.value);
+  
+  // Clear comment
+  commentBox.value = '';
+  
+  // Show modal
+  showModal('feedback-modal');
+  
+  // Focus on comment
+  setTimeout(() => {
+    commentBox.focus();
+  }, 100);
+}
+
+
+// Handle form submission
+function handleFeedbackSubmit(event) {
+  event.preventDefault(); // Prevent default form submission
+  console.log('📝 Form submitted');
+  submitFeedback(event);
+  return false;
+}
+
+// submitFeedback is defined later in the file (line ~4670)
 
 
 // Load booking requests for worker
@@ -4318,12 +4441,13 @@ function updateAdminNavbar() {
   const adminLink = document.getElementById('admin-link');
   const isAdmin = !!localStorage.getItem('adminToken');
 
-  if (isAdmin) {
-    adminBtn.style.display = 'none';
-    adminLink.style.display = 'block';
-  } else {
-    adminBtn.style.display = 'block';
-    adminLink.style.display = 'none';
+  if (adminBtn) {
+    adminBtn.textContent = isAdmin ? 'Admin Logout' : 'Admin Login';
+    adminBtn.onclick = isAdmin ? logoutAdmin : () => showModal('admin-login-modal');
+  }
+
+  if (adminLink) {
+    adminLink.style.display = isAdmin ? 'inline-block' : 'none';
   }
 }
 
@@ -4369,57 +4493,230 @@ let currentFeedbackBookingId = null;
 let currentFeedbackWorkerId = null;
 let feedbackRating = 0;
 
-function openFeedbackModal(bookingId, workerId) {
-  currentFeedbackBookingId = bookingId;
-  currentFeedbackWorkerId = workerId;
-  feedbackRating = 0;
-  // reset modal inputs
-  const stars = document.getElementById('feedback-stars');
-  if (stars) {
-    stars.innerHTML = '';
-    for (let i = 1; i <= 5; i++) {
-      stars.innerHTML += `<span style="cursor:pointer; font-size:28px; margin-right:6px;" onclick="setFeedbackRating(${i})">☆</span>`;
-    }
+// ⭐ COMPLETE FEEDBACK FUNCTIONS - ADD THESE TO app.js
+
+// Open feedback modal
+// Open feedback modal - DEBUGGED
+function openFeedbackModal(bookingId, workerName) {
+  console.log('📝 openFeedbackModal called with:', { bookingId, workerName, type: typeof bookingId });
+  
+  // Ensure bookingId is a number
+  const numericBookingId = parseInt(bookingId);
+  console.log('🔍 Parsed bookingId:', numericBookingId, 'isNaN:', isNaN(numericBookingId));
+  
+  if (isNaN(numericBookingId)) {
+    console.error('❌ INVALID BOOKING ID!');
+    alert('Error: Invalid booking ID');
+    return;
   }
-  const textarea = document.getElementById('feedback-text'); if (textarea) textarea.value = '';
+  
+  // Get the input field
+  const bookingIdField = document.getElementById('feedback-booking-id');
+  console.log('🔍 feedback-booking-id field found:', !!bookingIdField);
+  
+  if (!bookingIdField) {
+    console.error('❌ feedback-booking-id input NOT FOUND in HTML!');
+    return;
+  }
+  
+  // Set the value
+  bookingIdField.value = numericBookingId;
+  console.log('✅ Set feedback-booking-id to:', bookingIdField.value);
+  console.log('✅ Verify value was set:', document.getElementById('feedback-booking-id').value);
+  
+  // Set worker name
+  const workerNameField = document.getElementById('feedback-worker-name');
+  if (workerNameField) {
+    workerNameField.textContent = workerName;
+    console.log('✅ Set worker name to:', workerName);
+  }
+  
+  // Set default rating
+  const ratingSelect = document.getElementById('feedback-rating');
+  if (ratingSelect) {
+    ratingSelect.value = '4';
+    console.log('✅ Set rating to:', ratingSelect.value);
+  } else {
+    console.error('❌ feedback-rating select NOT FOUND!');
+  }
+  
+  // Clear comment
+  const commentInput = document.getElementById('feedback-comment');
+  if (commentInput) {
+    commentInput.value = '';
+    console.log('✅ Cleared comment');
+  }
+  
+  // Show modal
+  console.log('🎯 Calling showModal...');
   showModal('feedback-modal');
+  console.log('✅ Modal should be visible now');
 }
 
-function setFeedbackRating(r) {
-  feedbackRating = r;
-  const stars = document.getElementById('feedback-stars');
-  if (!stars) return;
-  let html = '';
-  for (let i = 1; i <= 5; i++) {
-    html += (i <= r) ? '★ ' : '☆ ';
+
+// Submit feedback
+// Submit feedback - DEBUGGED
+// async function submitFeedback(event) {
+//   event.preventDefault();
+  
+//   console.log('🚀 submitFeedback() called!');
+  
+//   // Get ALL values
+//   const bookingIdField = document.getElementById('feedback-booking-id');
+//   const bookingId = bookingIdField ? bookingIdField.value : null;
+  
+//   console.log('🔍 CRITICAL CHECK:', {
+//     bookingIdField: !!bookingIdField,
+//     bookingIdValue: bookingId,
+//     bookingIdType: typeof bookingId,
+//     bookingIdLength: bookingId ? bookingId.length : 'null'
+//   });
+  
+//   // Validate booking ID first
+//   if (!bookingId || bookingId === '' || bookingId === '0') {
+//     console.error('❌ BOOKING ID IS EMPTY!');
+//     alert('❌ No booking selected. Please close and reopen the feedback modal.');
+//     return false;
+//   }
+  
+//   const ratingSelect = document.getElementById('feedback-rating');
+//   const commentInput = document.getElementById('feedback-comment');
+//   const ratingValue = ratingSelect.value;
+//   const comment = commentInput.value.trim();
+  
+//   console.log('📋 Form values:', {
+//     bookingId,
+//     ratingValue,
+//     ratingType: typeof ratingValue,
+//     commentLength: comment.length
+//   });
+
+//   // Validate rating
+//   if (!ratingValue || ratingValue === '') {
+//     alert('❌ Please select a rating');
+//     ratingSelect.focus();
+//     return false;
+//   }
+
+//   const rating = parseInt(ratingValue);
+//   if (isNaN(rating) || rating < 1 || rating > 5) {
+//     alert(`❌ Invalid rating: ${ratingValue}`);
+//     ratingSelect.focus();
+//     return false;
+//   }
+
+//   // Validate comment
+//   if (comment.length < 3) {
+//     alert('❌ Comment must be at least 3 characters');
+//     commentInput.focus();
+//     return false;
+//   }
+
+//   // Submit
+//   const submitBtn = event.target.querySelector('button[type="submit"]');
+//   submitBtn.disabled = true;
+//   submitBtn.innerHTML = '⏳ Submitting...';
+
+//   try {
+//     console.log('📤 API Call - Payload:', { 
+//       bookingId: parseInt(bookingId), 
+//       rating, 
+//       comment: comment.substring(0, 50) 
+//     });
+    
+//     const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/feedback`, {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+//       },
+//       body: JSON.stringify({ rating, comment })
+//     });
+
+//     const data = await response.json();
+//     console.log('📥 API Response:', data);
+
+//     if (data.success) {
+//       alert('✅ Feedback submitted successfully!');
+//       closeModal('feedback-modal');
+//       loadBookings();
+//     } else {
+//       alert('❌ ' + (data.message || 'Submission failed'));
+//     }
+//   } catch (error) {
+//     console.error('❌ Network error:', error);
+//     alert('❌ Network error: ' + error.message);
+//   } finally {
+//     submitBtn.disabled = false;
+//     submitBtn.innerHTML = '📤 Submit Feedback';
+//   }
+  
+//   return false;
+// }
+async function submitFeedback(event) {
+  event.preventDefault();
+  
+  const bookingId = document.getElementById('feedback-booking-id').value;
+  const rating = document.getElementById('feedback-rating').value;
+  const comment = document.getElementById('feedback-comment').value.trim();
+
+  if (!bookingId) {
+    alert('❌ No booking ID found! Please close and reopen the feedback form.');
+    return false;
   }
-  stars.innerText = html.trim();
-}
 
-async function submitFeedback() {
-  if (!authToken) { alert('Please login to submit feedback'); showModal('login-modal'); return; }
-  if (!currentFeedbackBookingId) { alert('No booking selected'); return; }
+  if (!rating || rating < 1 || rating > 5) {
+    alert('❌ Please select a valid feedback rating (1-5 stars)');
+    return false;
+  }
 
-  const text = document.getElementById('feedback-text')?.value || '';
+  if (comment.length < 3) {
+    alert('❌ Feedback description is required! Please provide at least 3 characters.');
+    return false;
+  }
+
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '⏳ Submitting...';
+
   try {
-    const resp = await fetch(`${API_BASE_URL}/bookings/${currentFeedbackBookingId}/feedback`, {
+    const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/feedback`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-      body: JSON.stringify({ rating: feedbackRating, feedback: text })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+      },
+      body: JSON.stringify({ rating: parseInt(rating), comment })
     });
-    const data = await resp.json();
+
+    const data = await response.json();
+    console.log('📥 Feedback response:', data);
+
     if (data.success) {
-      alert('✅ Thank you for your feedback!');
+      alert('✅ Thank you! Your feedback has been submitted successfully.');
       closeModal('feedback-modal');
-      // refresh bookings
-      loadMyBookings();
+      // Refresh bookings to show updated status
+      if (typeof loadMyBookings === 'function') loadMyBookings();
+      if (typeof loadBookings === 'function') loadBookings();
     } else {
-      alert('❌ ' + (data.message || 'Could not submit feedback'));
+      alert('❌ ' + (data.message || 'Error submitting feedback'));
     }
-  } catch (e) {
-    console.error('Feedback error:', e);
-    alert('❌ Error submitting feedback: ' + e.message);
+  } catch (error) {
+    console.error('❌ Feedback error:', error);
+    alert('❌ Network error: ' + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '📤 Submit Feedback';
   }
+
+  return false;
+}
+
+
+// Legacy function - kept for compatibility
+function setFeedbackRating(r) {
+  // This function is no longer used - rating is now via dropdown
+  console.log('setFeedbackRating called but deprecated');
 }
 
 // ========================================

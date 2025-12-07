@@ -92,6 +92,8 @@ CREATE TABLE IF NOT EXISTS bookings (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (worker_id) REFERENCES workers(id) ON DELETE CASCADE
 );
+ALTER TABLE bookings
+ADD COLUMN feedback_given BOOLEAN DEFAULT 0;
 -- CREATE INDEX idx_booking_date ON bookings(booking_date);
 -- CREATE INDEX idx_booking_status ON bookings(status);
 -- Add certificate count column to workers if not exists
@@ -151,6 +153,8 @@ select *
 from messages;
 select *
 from bookings;
+DESC bookings;
+DESC rating;
 -- Create indexes for better performance
 -- CREATE INDEX idx_occupation ON workers(occupation);
 -- CREATE INDEX idx_location ON workers(location);
