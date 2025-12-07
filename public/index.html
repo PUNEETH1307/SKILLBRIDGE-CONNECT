@@ -20,8 +20,8 @@
                 <a href="#about" class="nav-link" id="about-link" onclick="showSection('about'); loadWorkerProfile();">About</a>
                 <a href="#services" class="nav-link" id="services-link" onclick="showSection('my-services'); loadWorkerServices();">Services</a>
                 <a href="#admin" class="nav-link" id="admin-link" style="display:none;" onclick="showSection('admin-dashboard'); loadAdminStats();">Admin</a>
-                <a href="#messages" class="nav-link" onclick="showSection('messages'); initializeChat(); loadConversations();">Messages</a>
-                <a href="#my-bookings" class="nav-link" onclick="showSection('my-bookings'); loadBookings();">My Bookings</a>
+                <a href="#messages" class="nav-link" id="messages-link" onclick="showSection('messages'); initializeChat(); loadConversations();">Messages</a>
+                <a href="#my-bookings" class="nav-link" id="my-bookings-link" onclick="showSection('my-bookings'); loadBookings();">My Bookings</a>
                 <button class="theme-toggle" id="theme-toggle" title="Toggle Dark/Light Mode">
                     <i class="fas fa-sun"></i>
                 </button>
@@ -49,12 +49,12 @@
     <h2 class="section-title" id="my-bookings-title">📅 My Bookings & Requests</h2>
     
     <div style="margin-bottom: 30px;">
-      <h3>🔔 Booking Requests I Received (As Worker)</h3>
+      <h3 id="booking-requests-worker-heading">🔔 Booking Requests I Received (As Worker)</h3>
       <div id="worker-booking-requests" style="display: grid; gap: 15px;"></div>
     </div>
     
     <div>
-      <h3>📋 Bookings I Made (As Customer)</h3>
+      <h3 id="bookings-customer-heading">📋 Bookings I Made (As Customer)</h3>
       <div id="customer-bookings" style="display: grid; gap: 15px;"></div>
     </div>
   </div>

@@ -732,6 +732,11 @@ const TRANSLATIONS = {
       'profile.myProfile': 'मेरी प्रोफ़ाइल',
     'nav.messages': 'संदेश',
     'nav.myBookings': 'मेरी बुकिंग्स',
+    'section.myBookingsTitle': 'मेरी बुकिंग्स और अनुरोध',
+    'section.myServicesTitle': 'मेरी सेवाएँ (पुष्टि बुकिंग्स)',
+    'section.messagesTitle': 'संदेश',
+    'section.bookingRequestsWorker': '🔔 मुझे प्राप्त बुकिंग अनुरोध (वर्कर के रूप में)',
+    'section.bookingsCustomer': '📋 मैंने की गई बुकिंग्स (ग्राहक के रूप में)',
     'btn.joinWorker': 'वर्कर के रूप में जुड़ें',
     'btn.findWorkers': 'वर्कर्स खोजें',
     'hero.title': 'अपने क्षेत्र के कुशल कर्मचारियों से जुड़ें',
@@ -876,6 +881,11 @@ const TRANSLATIONS = {
       'profile.myProfile': 'ನನ್ನ ಪ್ರೊಫೈಲ್',
     'nav.messages': 'ಸಂದೇಶಗಳು',
     'nav.myBookings': 'ನನ್ನ ಬುಕ್ಕಿಂಗ್‌ಗಳು',
+    'section.myBookingsTitle': 'ನನ್ನ ಬುಕ್ಕಿಂಗ್‌ಗಳು ಮತ್ತು ವಿನಂತಿಗಳು',
+    'section.myServicesTitle': 'ನನ್ನ ಸೇವೆಗಳು (ದೃಢೀಕೃತ ಬುಕ್ಕಿಂಗ್‌ಗಳು)',
+    'section.messagesTitle': 'ಸಂದೇಶಗಳು',
+    'section.bookingRequestsWorker': '🔔 ನಾನು ಸ್ವೀಕರಿಸಿದ ಬುಕ್ಕಿಂಗ್ ವಿನಂತಿಗಳು (ಕೆಲಸಗಾರನಾಗಿ)',
+    'section.bookingsCustomer': '📋 ನಾನು ಮಾಡಿದ ಬುಕ್ಕಿಂಗ್‌ಗಳು (ಗ್ರಾಹಕನಾಗಿ)',
     'btn.joinWorker': 'ಕೆಲಸಗಾರನಾಗಿ ಸೇರಿ',
     'btn.findWorkers': 'ಕೆಲಸಗಾರರನ್ನು ಹುಡುಕಿ',
     'hero.title': 'ನಿಮ್ಮ ಪ್ರದೇಶದ ನಿಪುಣ ಉದ್ಯೋಗಿಗಳೊಂದಿಗೆ ಸಂಪರ್ಕ ಹೊಂದಿ',
@@ -1020,6 +1030,11 @@ const TRANSLATIONS = {
       'profile.myProfile': 'என் சுயவிவரம்',
     'nav.messages': 'செய்திகள்',
     'nav.myBookings': 'என் முன்பதிவுகள்',
+    'section.myBookingsTitle': 'என் முன்பதிவுகள் & கோரிக்கைகள்',
+    'section.myServicesTitle': 'என் சேவைகள் (உறுதிசெய்யப்பட்ட முன்பதிவுகள்)',
+    'section.messagesTitle': 'செய்திகள்',
+    'section.bookingRequestsWorker': '🔔 நான் பெற்ற முன்பதிவு கோரிக்கைகள் (தொழிலாளியாக)',
+    'section.bookingsCustomer': '📋 நான் செய்த முன்பதிவுகள் (வாடிக்கையாளராக)',
     'btn.joinWorker': 'வேலைநபராக சேரவும்',
     'btn.findWorkers': 'வேலைவழங்குநர்களை கண்டறிக',
     'hero.title': 'உங்கள் பகுதியில் திறமையான தொழிலாளர்களுடன் இணையுங்கள்',
@@ -1211,6 +1226,8 @@ function applyTranslations(lang) {
   const myBookingsTitle = document.getElementById('my-bookings-title'); if (myBookingsTitle) myBookingsTitle.textContent = map['section.myBookingsTitle'] || 'My Bookings & Requests';
   const myServicesTitle = document.getElementById('my-services-title'); if (myServicesTitle) myServicesTitle.textContent = map['section.myServicesTitle'] || 'My Services (Confirmed Bookings)';
   const messagesTitle = document.getElementById('messages-title'); if (messagesTitle) messagesTitle.textContent = map['section.messagesTitle'] || 'Messages';
+  const bookingRequestsWorkerHeading = document.getElementById('booking-requests-worker-heading'); if (bookingRequestsWorkerHeading) bookingRequestsWorkerHeading.textContent = map['section.bookingRequestsWorker'] || '🔔 Booking Requests I Received (As Worker)';
+  const bookingsCustomerHeading = document.getElementById('bookings-customer-heading'); if (bookingsCustomerHeading) bookingsCustomerHeading.textContent = map['section.bookingsCustomer'] || '📋 Bookings I Made (As Customer)';
   const messagesLink = document.querySelector('a[href="#messages"]'); if (messagesLink) messagesLink.textContent = map['nav.messages'] || 'Messages';
   const myBookingsLink = document.querySelector('a[href="#my-bookings"]'); if (myBookingsLink) myBookingsLink.textContent = map['nav.myBookings'] || 'My Bookings';
 
