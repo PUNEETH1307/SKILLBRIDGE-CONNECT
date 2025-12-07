@@ -2782,6 +2782,20 @@ textarea::placeholder {
   transform: scale(1.02);
 }
 
+/* Highlight popup used to draw attention to booking box */
+.highlight-popup {
+  animation: pop-highlight 0.9s ease forwards;
+  box-shadow: 0 12px 32px rgba(33,150,243,0.18);
+  transform-origin: center;
+  border-color: #1976d2 !important;
+}
+
+@keyframes pop-highlight {
+  0% { transform: scale(0.98); box-shadow: none; }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
 .booking-rate-info {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);

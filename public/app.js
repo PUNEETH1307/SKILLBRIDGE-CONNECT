@@ -1406,10 +1406,7 @@ function createWorkerCard(worker) {
         </div>
       </div>
 
-      <div class="worker-rating" style="margin: 15px 0; padding: 12px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee;">
-        <span>${generateStars(rating)}</span>
-        <span style="margin-left: 10px; color: #666; font-size: 14px;"><strong>${rating.toFixed(1)}</strong>/5 <span style="color: #999;">(${reviews} reviews)</span></span>
-      </div>
+      <!-- Ratings hidden from public listing to prevent unverified ratings -->
 
       <div class="worker-details" style="font-size: 13px; margin: 12px 0; line-height: 1.8; color: #555;">
           <p style="margin: 6px 0;"><strong>📍 ${t('label.location','Location:')}</strong> ${escapeHtml(worker.location)}</p>
@@ -1488,7 +1485,6 @@ async function displayWorkerProfile(worker) {
             <h1>${escapeHtml(worker.name)}</h1>
             <p class="profile-header-occupation">${escapeHtml(worker.occupation)}</p>
             <div class="profile-stats">
-              <div class="profile-stat-item">⭐ ${worker.rating || 0}/5 (${worker.reviews_count || worker.total_reviews || 0})</div>
               <div class="profile-stat-item">💼 ${worker.experience}y experience</div>
               <div class="profile-stat-item">💰 ₹${worker.hourly_rate}/hr</div>
               ${worker.verified ? '<div class="profile-stat-item">✓ Verified</div>' : ''}
@@ -1577,21 +1573,7 @@ async function displayWorkerProfile(worker) {
             <p class="booking-rate-info">${t('booking.rate','Rate:')} ₹${worker.hourly_rate}/${t('label.hour','hr')}</p>
           </div>
           
-          <!-- Rating Box -->
-          <div class="profile-rating-box">
-            <h3>⭐ ${t('profile.rate','Rate This Worker')}</h3>
-            ${userRating ? `<p class="rating-display">Your Rating: ${userRating.rating}/5</p>` : ''}
-            <div class="star-rating-container">
-              <span onclick="window.selectRating(${worker.id}, 1)">☆</span>
-              <span onclick="window.selectRating(${worker.id}, 2)">☆</span>
-              <span onclick="window.selectRating(${worker.id}, 3)">☆</span>
-              <span onclick="window.selectRating(${worker.id}, 4)">☆</span>
-              <span onclick="window.selectRating(${worker.id}, 5)">☆</span>
-            </div>
-            <textarea class="review-textarea" id="review-text-${worker.id}" placeholder="${t('profile.reviewPlaceholder','Write your review (optional)...')}"></textarea>
-            <button class="rating-submit-btn" onclick="window.submitRating(${worker.id})">⭐ ${t('btn.submitRating','Submit Rating')}</button>
-            <p class="rating-note">${t('profile.ratingNote','Click stars to rate (1-5)')}</p>
-          </div>
+          <!-- Rating removed from profile. Feedback is collected via bookings (My Bookings) after the worker accepts your booking. -->
         </div>
       </div>
       
@@ -1700,6 +1682,12 @@ async function loadMyBookings() {
         cancelled: '#f44336'
       };
 
+      const actionButtonHtml = (booking.status === 'confirmed' && !booking.feedback_given) ? `
+          <div style="margin-top:12px; display:flex; gap:8px;">
+            <button onclick="openFeedbackModal(${booking.id}, ${booking.worker_id})" style="padding:10px 14px; background:#ff9800; color:white; border:none; border-radius:6px; cursor:pointer;">💬 Give Feedback</button>
+          </div>
+        ` : '';
+
       html += `
         <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid ${statusColors[booking.status]}; margin-bottom: 15px;">
           <h4 style="margin: 0 0 10px 0;">${booking.worker_name} - ${booking.occupation}</h4>
@@ -1708,6 +1696,7 @@ async function loadMyBookings() {
           <p style="margin: 5px 0;"><strong>Price:</strong> ₹${booking.total_price}</p>
           <p style="margin: 5px 0;"><strong>Status:</strong> <span style="background: ${statusColors[booking.status]}; color: white; padding: 3px 10px; border-radius: 3px; font-size: 12px;">${booking.status.toUpperCase()}</span></p>
           ${booking.service_description ? `<p style="margin: 10px 0 0 0; color: #666;">${booking.service_description}</p>` : ''}
+          ${actionButtonHtml}
         </div>
       `;
     });
@@ -4357,9 +4346,79 @@ function closeModal(modalId) {
 // ========================================
 
 function bookWorker(workerId) {
+  // Navigate to the worker profile and highlight the booking form so user can proceed to book
   const worker = allWorkersData.find(w => w.id === workerId);
   if (worker) {
-    alert(`Booking ${worker.name}...\n\nPhone: ${worker.phone}\n\nPlease contact this worker directly to finalize booking!`);
+    // Open profile
+    viewWorkerProfile(workerId);
+
+    // After profile renders, scroll and highlight booking box
+    setTimeout(() => {
+      const bookingBox = document.querySelector('.profile-booking-box');
+      if (bookingBox) {
+        bookingBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        bookingBox.classList.add('highlight-popup');
+        setTimeout(() => bookingBox.classList.remove('highlight-popup'), 1800);
+      }
+    }, 450);
+  }
+}
+
+// ============= FEEDBACK FLOW =============
+let currentFeedbackBookingId = null;
+let currentFeedbackWorkerId = null;
+let feedbackRating = 0;
+
+function openFeedbackModal(bookingId, workerId) {
+  currentFeedbackBookingId = bookingId;
+  currentFeedbackWorkerId = workerId;
+  feedbackRating = 0;
+  // reset modal inputs
+  const stars = document.getElementById('feedback-stars');
+  if (stars) {
+    stars.innerHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      stars.innerHTML += `<span style="cursor:pointer; font-size:28px; margin-right:6px;" onclick="setFeedbackRating(${i})">☆</span>`;
+    }
+  }
+  const textarea = document.getElementById('feedback-text'); if (textarea) textarea.value = '';
+  showModal('feedback-modal');
+}
+
+function setFeedbackRating(r) {
+  feedbackRating = r;
+  const stars = document.getElementById('feedback-stars');
+  if (!stars) return;
+  let html = '';
+  for (let i = 1; i <= 5; i++) {
+    html += (i <= r) ? '★ ' : '☆ ';
+  }
+  stars.innerText = html.trim();
+}
+
+async function submitFeedback() {
+  if (!authToken) { alert('Please login to submit feedback'); showModal('login-modal'); return; }
+  if (!currentFeedbackBookingId) { alert('No booking selected'); return; }
+
+  const text = document.getElementById('feedback-text')?.value || '';
+  try {
+    const resp = await fetch(`${API_BASE_URL}/bookings/${currentFeedbackBookingId}/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+      body: JSON.stringify({ rating: feedbackRating, feedback: text })
+    });
+    const data = await resp.json();
+    if (data.success) {
+      alert('✅ Thank you for your feedback!');
+      closeModal('feedback-modal');
+      // refresh bookings
+      loadMyBookings();
+    } else {
+      alert('❌ ' + (data.message || 'Could not submit feedback'));
+    }
+  } catch (e) {
+    console.error('Feedback error:', e);
+    alert('❌ Error submitting feedback: ' + e.message);
   }
 }
 
